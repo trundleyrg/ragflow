@@ -9,7 +9,11 @@ import shutil
 from GeneralAgent.GeneralAgent import skills
 
 # 配置日志
-logging.basicConfig(filename="./sdk/logs/gr.log", level=logging.INFO)
+DEBUG = False
+if DEBUG:
+    logging.basicConfig(level=logging.INFO)
+else:
+    logging.basicConfig(filename="./sdk/logs/gr.log", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -42,6 +46,7 @@ def split_text(text, max_token=3000, separators='\n'):
 
 def remote_chat(data):
     url = 'http://10.0.1.41:8589/api/chat'
+    # url = 'http://localhost:11434/api/chat'
     headers = {
         'Content-Type': 'application/json'
     }
@@ -64,7 +69,10 @@ def llm_chat(input_text):
                 "content": input_text
             }
         ],
-        "stream": False
+        "stream": False,
+        "options": {
+            "num_ctx": 32768
+        }
     }
     res = remote_chat(chat_data)
     return res
@@ -100,7 +108,10 @@ def long_text(system_prompt, summary_prompt, file_obj):
                         "\n".join(content)
                 }
             ],
-            "stream": False
+            "stream": False,
+            "options": {
+                "num_ctx": 32768
+            }
         }
         return index, remote_chat(data)
 
@@ -124,7 +135,10 @@ def long_text(system_prompt, summary_prompt, file_obj):
                     '\n'.join([x[1] for x in results])
             }
         ],
-        "stream": False
+        "stream": False,
+        "options": {
+            "num_ctx": 32768
+        }
     }
 
     res = remote_chat(abstrct_data)
@@ -159,9 +173,11 @@ if __name__ == '__main__':
                                           value="你是一个文件助手，你的任务是阅读理解文本，并从中提取出对应的结果。必须使用中文作答。"
                                                 "结果应该完全从文本中得来，不要修改原文内容，不要虚构内容。"
                                                 "你需要从用户文字中提取医生姓名、所属科室、所在单位、擅长领域等信息。"
-                                                "返回结果使用json表示。例如{'姓名':'', '性别':'', '所在医院':'', '科室':'', '擅长领域':'', '任教大学':''}。")
+                                                "返回结果使用json表示。"
+                                                "例如{'姓名':'', '性别':'', '所在医院':'', '科室':'', '擅长领域':'', '任教大学':''}。")
                 summary_input = gr.Textbox(lines=1, placeholder="总结prompt",
-                                           value="你是一个能理解json的助手，请从用户的json文本中提取出医生姓名、所属科室、所在单位、擅长领域等信息，去掉值为空的结果。返回结果使用json表示。"
+                                           value="你是一个能理解json的助手，"
+                                                 "请从用户的多段json文本中提取并合并医生姓名、所属科室、所在单位、擅长领域等信息，去掉值为空的结果。返回结果使用json表示。"
                                                  "例如{'姓名':'', '性别':'', '所在医院':'', '科室':'', '擅长领域':'', '任教大学':''}。")
                 long_file = gr.components.File(label="上传文件")
                 long_output = gr.Textbox()
