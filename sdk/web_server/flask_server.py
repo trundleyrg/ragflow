@@ -1,3 +1,7 @@
+"""
+医生信息提取
+"""
+
 import requests
 import json
 import re
@@ -5,6 +9,8 @@ import logging
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
+from GeneralAgent.GeneralAgent import skills
 
 app = Flask(__name__)
 # 配置日志
@@ -21,11 +27,10 @@ def split_text(text, max_token=3000, separators='\n'):
     """
     pattern = "[" + re.escape(separators) + "]"
     paragraphs = list(re.split(pattern, text))
-    # print(len(paragraphs))
     result = []
     current = ''
     for paragraph in paragraphs:
-        if len(paragraph) + len(current) > max_token:
+        if skills.string_token_count(current) + skills.string_token_count(paragraph) > max_token:
             result.append(current)
             current = ''
         current += paragraph + '\n'
@@ -53,12 +58,17 @@ def remote_chat(data):
 @app.route('/long_text', methods=['POST'])
 def long_text():
     txt = request.get_json()
+    print(txt)
     # 记录日志
-    logger.info(f'long_text Received txt: {txt["message"]}')
-    segments = split_text(txt["message"], 1000)
+    logger.info(f'long_text Received txt: {txt["message"]} \n')
+    segments = split_text(txt["message"], 2000)
 
     def _process_text(index, content):
-        role = "你是一个助手，你的任务是理解并回应用户的需求。必须使用中文作答。"
+        role = ("你是一个文件助手，你的任务是阅读理解文本，并从中提取出对应的结果。必须使用中文作答。"
+                "结果应该完全从文本中得来，不要修改原文内容，不要虚构内容。"
+                "你需要从用户文字中提取医生姓名、所属科室、所在单位、擅长领域等信息。"
+                "返回结果使用json表示。"
+                "例如{'姓名':'', '性别':'', '所在医院':'', '科室':'', '擅长领域':'', '任教大学':''}。")
         data = {
             "model": "qwen2:72b-instruct",
             "messages": [
@@ -72,7 +82,10 @@ def long_text():
                         "\n".join(content)
                 }
             ],
-            "stream": False
+            "stream": False,
+            "options": {
+                "num_ctx": 32768
+            }
         }
         return index, remote_chat(data)
 
@@ -82,7 +95,11 @@ def long_text():
         results.append(future)
 
     results.sort(key=lambda x: x[0])
-    abstract_role = "你是一个能理解json的助手，请根据用户需求处理内容。返回结果使用json表示。"
+    abstract_role = ("你是一个能理解json的助手。"
+                     "请从用户的多段json文本中提取并合并医生姓名、所属科室、所在单位、擅长领域等信息，去掉值为空的结果。"
+                     "返回结果使用json表示。"
+                     "例如{'姓名':'', '性别':'', '所在医院':'', '科室':'', '擅长领域':'', '任教大学':''}。")
+
     abstrct_data = {
         "model": "qwen2:72b-instruct",
         "messages": [
@@ -96,7 +113,10 @@ def long_text():
                     '\n'.join([x[1] for x in results])
             }
         ],
-        "stream": False
+        "stream": False,
+        "options": {
+            "num_ctx": 32768
+        }
     }
 
     res = remote_chat(abstrct_data)
