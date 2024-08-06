@@ -29,14 +29,15 @@ from rag.nlp import rag_tokenizer
 from rag.utils import num_tokens_from_string
 
 
-def be_children(obj: dict):
+def be_children(obj: dict, keyset:set):
     arr = []
     for k,v in obj.items():
         k = re.sub(r"\*+", "", k)
-        if not k :continue
+        if not k or k in keyset:continue
+        keyset.add(k)
         arr.append({
             "id": k,
-            "children": be_children(v) if isinstance(v, dict) else []
+            "children": be_children(v, keyset) if isinstance(v, dict) else []
         })
     return arr
 
@@ -45,7 +46,7 @@ def graph_merge(g1, g2):
     g = g2.copy()
     for n, attr in g1.nodes(data=True):
         if n not in g2.nodes():
-            g2.add_node(n, **attr)
+            g.add_node(n, **attr)
             continue
 
         g.nodes[n]["weight"] += 1
@@ -67,7 +68,7 @@ def build_knowlege_graph_chunks(tenant_id: str, chunks: List[str], callback, ent
     llm_bdl = LLMBundle(tenant_id, LLMType.CHAT)
     ext = GraphExtractor(llm_bdl)
     left_token_count = llm_bdl.max_length - ext.prompt_token_count - 1024
-    left_token_count = llm_bdl.max_length * 0.4
+    left_token_count = max(llm_bdl.max_length * 0.8, left_token_count)
 
     assert left_token_count > 0, f"The LLM context length({llm_bdl.max_length}) is smaller than prompt({ext.prompt_token_count})"
 
@@ -75,7 +76,7 @@ def build_knowlege_graph_chunks(tenant_id: str, chunks: List[str], callback, ent
     cnt = 0
     threads = []
     exe = ThreadPoolExecutor(max_workers=12)
-    for i in range(len(chunks[:512])):
+    for i in range(len(chunks)):
         tkn_cnt = num_tokens_from_string(chunks[i])
         if cnt+tkn_cnt >= left_token_count and texts:
             threads.append(exe.submit(ext, texts, {"entity_types": entity_types}))
@@ -142,8 +143,12 @@ def build_knowlege_graph_chunks(tenant_id: str, chunks: List[str], callback, ent
     mg = mindmap(_chunks).output
     if not len(mg.keys()): return chunks
 
-    if len(mg.keys()) > 1: md_map = {"id": "root", "children": [{"id": re.sub(r"\*+", "", k), "children": be_children(v)} for k,v in mg.items() if isinstance(v, dict) and re.sub(r"\*+", "", k)]}
-    else: md_map = {"id": re.sub(r"\*+", "", list(mg.keys())[0]), "children": be_children(list(mg.items())[1])}
+    if len(mg.keys()) > 1:
+        keyset = set([re.sub(r"\*+", "", k) for k,v in mg.items() if isinstance(v, dict) and re.sub(r"\*+", "", k)])
+        md_map = {"id": "root", "children": [{"id": re.sub(r"\*+", "", k), "children": be_children(v, keyset)} for k,v in mg.items() if isinstance(v, dict) and re.sub(r"\*+", "", k)]}
+    else:
+        k = re.sub(r"\*+", "", list(mg.keys())[0])
+        md_map = {"id": k, "children": be_children(list(mg.items())[0][1], set([k]))}
     print(json.dumps(md_map, ensure_ascii=False, indent=2))
     chunks.append(
         {
