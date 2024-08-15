@@ -203,6 +203,14 @@ def list_docs():
         return server_error_response(e)
 
 
+@manager.route('/infos', methods=['POST'])
+def docinfos():
+    req = request.json
+    doc_ids = req["doc_ids"]
+    docs = DocumentService.get_by_ids(doc_ids)
+    return get_json_result(data=list(docs.dicts()))
+
+
 @manager.route('/thumbnails', methods=['GET'])
 @login_required
 def thumbnails():
@@ -501,7 +509,9 @@ def upload_and_parse():
             "callback": dummy,
             "parser_config": parser_config,
             "from_page": 0,
-            "to_page": 100000
+            "to_page": 100000,
+            "tenant_id": kb.tenant_id,
+            "lang": kb.language
         }
         threads.append(exe.submit(FACTORY.get(d["parser_id"], naive).chunk, d["name"], blob, **kwargs))
 
