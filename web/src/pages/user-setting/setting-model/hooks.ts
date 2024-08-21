@@ -163,6 +163,60 @@ export const useSubmitVolcEngine = () => {
   };
 };
 
+export const useSubmitHunyuan = () => {
+  const { addLlm, loading } = useAddLlm();
+  const {
+    visible: HunyuanAddingVisible,
+    hideModal: hideHunyuanAddingModal,
+    showModal: showHunyuanAddingModal,
+  } = useSetModalState();
+
+  const onHunyuanAddingOk = useCallback(
+    async (payload: IAddLlmRequestBody) => {
+      const ret = await addLlm(payload);
+      if (ret === 0) {
+        hideHunyuanAddingModal();
+      }
+    },
+    [hideHunyuanAddingModal, addLlm],
+  );
+
+  return {
+    HunyuanAddingLoading: loading,
+    onHunyuanAddingOk,
+    HunyuanAddingVisible,
+    hideHunyuanAddingModal,
+    showHunyuanAddingModal,
+  };
+};
+
+export const useSubmitSpark = () => {
+  const { addLlm, loading } = useAddLlm();
+  const {
+    visible: SparkAddingVisible,
+    hideModal: hideSparkAddingModal,
+    showModal: showSparkAddingModal,
+  } = useSetModalState();
+
+  const onSparkAddingOk = useCallback(
+    async (payload: IAddLlmRequestBody) => {
+      const ret = await addLlm(payload);
+      if (ret === 0) {
+        hideSparkAddingModal();
+      }
+    },
+    [hideSparkAddingModal, addLlm],
+  );
+
+  return {
+    SparkAddingLoading: loading,
+    onSparkAddingOk,
+    SparkAddingVisible,
+    hideSparkAddingModal,
+    showSparkAddingModal,
+  };
+};
+
 export const useSubmitBedrock = () => {
   const { addLlm, loading } = useAddLlm();
   const {

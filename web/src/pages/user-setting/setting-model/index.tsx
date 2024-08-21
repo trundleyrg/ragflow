@@ -34,12 +34,16 @@ import {
   useHandleDeleteLlm,
   useSubmitApiKey,
   useSubmitBedrock,
+  useSubmitHunyuan,
   useSubmitOllama,
+  useSubmitSpark,
   useSubmitSystemModelSetting,
   useSubmitVolcEngine,
 } from './hooks';
+import HunyuanModal from './hunyuan-modal';
 import styles from './index.less';
 import OllamaModal from './ollama-modal';
+import SparkModal from './spark-modal';
 import SystemModelSettingModal from './system-model-setting-modal';
 import VolcEngineModal from './volcengine-modal';
 
@@ -88,7 +92,10 @@ const ModelCard = ({ item, clickApiKey }: IModelCardProps) => {
           <Col span={12} className={styles.factoryOperationWrapper}>
             <Space size={'middle'}>
               <Button onClick={handleApiKeyClick}>
-                {isLocalLlmFactory(item.name) || item.name === 'VolcEngine'
+                {isLocalLlmFactory(item.name) ||
+                item.name === 'VolcEngine' ||
+                item.name === 'Tencent Hunyuan' ||
+                item.name === 'XunFei Spark'
                   ? t('addTheModel')
                   : 'API-Key'}
                 <SettingOutlined />
@@ -163,6 +170,22 @@ const UserSettingModel = () => {
   } = useSubmitVolcEngine();
 
   const {
+    HunyuanAddingVisible,
+    hideHunyuanAddingModal,
+    showHunyuanAddingModal,
+    onHunyuanAddingOk,
+    HunyuanAddingLoading,
+  } = useSubmitHunyuan();
+
+  const {
+    SparkAddingVisible,
+    hideSparkAddingModal,
+    showSparkAddingModal,
+    onSparkAddingOk,
+    SparkAddingLoading,
+  } = useSubmitSpark();
+
+  const {
     bedrockAddingLoading,
     onBedrockAddingOk,
     bedrockAddingVisible,
@@ -174,8 +197,15 @@ const UserSettingModel = () => {
     () => ({
       Bedrock: showBedrockAddingModal,
       VolcEngine: showVolcAddingModal,
+      'Tencent Hunyuan': showHunyuanAddingModal,
+      'XunFei Spark': showSparkAddingModal,
     }),
-    [showBedrockAddingModal, showVolcAddingModal],
+    [
+      showBedrockAddingModal,
+      showVolcAddingModal,
+      showHunyuanAddingModal,
+      showSparkAddingModal,
+    ],
   );
 
   const handleAddModel = useCallback(
@@ -286,6 +316,20 @@ const UserSettingModel = () => {
         loading={volcAddingLoading}
         llmFactory={'VolcEngine'}
       ></VolcEngineModal>
+      <HunyuanModal
+        visible={HunyuanAddingVisible}
+        hideModal={hideHunyuanAddingModal}
+        onOk={onHunyuanAddingOk}
+        loading={HunyuanAddingLoading}
+        llmFactory={'Tencent Hunyuan'}
+      ></HunyuanModal>
+      <SparkModal
+        visible={SparkAddingVisible}
+        hideModal={hideSparkAddingModal}
+        onOk={onSparkAddingOk}
+        loading={SparkAddingLoading}
+        llmFactory={'XunFei Spark'}
+      ></SparkModal>
       <BedrockModal
         visible={bedrockAddingVisible}
         hideModal={hideBedrockAddingModal}

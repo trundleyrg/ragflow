@@ -501,6 +501,13 @@ export default {
       'eu-central-1': '欧洲 (法兰克福)',
       'us-gov-west-1': 'AWS GovCloud (US-West)',
       'ap-southeast-2': '亚太地区 (悉尼)',
+      addHunyuanSID: '混元 Secret ID',
+      HunyuanSIDMessage: '请输入 Secret ID',
+      addHunyuanSK: '混元 Secret Key',
+      HunyuanSKMessage: '请输入 Secret Key',
+      SparkModelNameMessage: '请选择星火模型！',
+      addSparkAPIPassword: '星火 APIPassword',
+      SparkAPIPasswordMessage: '请输入 APIPassword',
     },
     message: {
       registered: '注册成功',
