@@ -30,6 +30,7 @@ import {
   NodeMap,
   Operator,
   RestrictedUpstreamMap,
+  SwitchElseTo,
   initialArXivValues,
   initialBaiduFanyiValues,
   initialBaiduValues,
@@ -519,6 +520,17 @@ export const useWatchNodeFormDataChange = () => {
         return pre;
       }, []);
 
+      // Splice the else condition of the conditional judgment to the edge list
+      const elseTo = form[SwitchElseTo];
+      if (elseTo) {
+        downstreamEdges.push({
+          id: uuid(),
+          source: nodeId,
+          target: elseTo,
+          sourceHandle: SwitchElseTo,
+        });
+      }
+
       setEdgesByNodeId(nodeId, downstreamEdges);
     },
     [setEdgesByNodeId],
@@ -550,4 +562,27 @@ export const useWatchNodeFormDataChange = () => {
     buildRelevantEdgesByFormData,
     buildSwitchEdgesByFormData,
   ]);
+};
+
+// exclude nodes with branches
+const ExcludedNodes = [
+  Operator.Categorize,
+  Operator.Relevant,
+  Operator.Begin,
+  Operator.Answer,
+];
+
+export const useBuildComponentIdSelectOptions = (nodeId?: string) => {
+  const nodes = useGraphStore((state) => state.nodes);
+
+  const options = useMemo(() => {
+    return nodes
+      .filter(
+        (x) =>
+          x.id !== nodeId && !ExcludedNodes.some((y) => y === x.data.label),
+      )
+      .map((x) => ({ label: x.data.name, value: x.id }));
+  }, [nodes, nodeId]);
+
+  return options;
 };
