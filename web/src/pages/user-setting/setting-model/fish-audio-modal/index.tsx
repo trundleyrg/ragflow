@@ -1,20 +1,17 @@
 import { useTranslate } from '@/hooks/common-hooks';
 import { IModalProps } from '@/interfaces/common';
 import { IAddLlmRequestBody } from '@/interfaces/request/llm';
-import { Flex, Form, Input, Modal, Select, Space, Switch } from 'antd';
+import { Flex, Form, Input, Modal, Select, Space } from 'antd';
 import omit from 'lodash/omit';
 
 type FieldType = IAddLlmRequestBody & {
-  vision: boolean;
-  volc_ak: string;
-  volc_sk: string;
-  endpoint_id: string;
-  ark_api_key: string;
+  fish_audio_ak: string;
+  fish_audio_refid: string;
 };
 
 const { Option } = Select;
 
-const VolcEngineModal = ({
+const FishAudioModal = ({
   visible,
   hideModal,
   onOk,
@@ -27,13 +24,10 @@ const VolcEngineModal = ({
 
   const handleOk = async () => {
     const values = await form.validateFields();
-    const modelType =
-      values.model_type === 'chat' && values.vision
-        ? 'image2text'
-        : values.model_type;
+    const modelType = values.model_type;
 
     const data = {
-      ...omit(values, ['vision']),
+      ...omit(values),
       model_type: modelType,
       llm_factory: llmFactory,
     };
@@ -52,17 +46,14 @@ const VolcEngineModal = ({
       footer={(originNode: React.ReactNode) => {
         return (
           <Flex justify={'space-between'}>
-            <a
-              href="https://www.volcengine.com/docs/82379/1302008"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('ollamaLink', { name: llmFactory })}
+            <a href={`https://fish.audio`} target="_blank" rel="noreferrer">
+              {t('FishAudioLink')}
             </a>
             <Space>{originNode}</Space>
           </Flex>
         );
       }}
+      confirmLoading={loading}
     >
       <Form
         name="basic"
@@ -74,51 +65,37 @@ const VolcEngineModal = ({
         <Form.Item<FieldType>
           label={t('modelType')}
           name="model_type"
-          initialValue={'chat'}
+          initialValue={'tts'}
           rules={[{ required: true, message: t('modelTypeMessage') }]}
         >
           <Select placeholder={t('modelTypeMessage')}>
-            <Option value="chat">chat</Option>
-            <Option value="embedding">embedding</Option>
+            <Option value="tts">tts</Option>
           </Select>
         </Form.Item>
         <Form.Item<FieldType>
           label={t('modelName')}
           name="llm_name"
-          rules={[{ required: true, message: t('volcModelNameMessage') }]}
+          rules={[{ required: true, message: t('FishAudioModelNameMessage') }]}
         >
-          <Input placeholder={t('volcModelNameMessage')} />
+          <Input placeholder={t('FishAudioModelNameMessage')} />
         </Form.Item>
         <Form.Item<FieldType>
-          label={t('addEndpointID')}
-          name="endpoint_id"
-          rules={[{ required: true, message: t('endpointIDMessage') }]}
+          label={t('addFishAudioAK')}
+          name="FishAudio_ak"
+          rules={[{ required: true, message: t('FishAudioAKMessage') }]}
         >
-          <Input placeholder={t('endpointIDMessage')} />
+          <Input placeholder={t('FishAudioAKMessage')} />
         </Form.Item>
         <Form.Item<FieldType>
-          label={t('addArkApiKey')}
-          name="ark_api_key"
-          rules={[{ required: true, message: t('ArkApiKeyMessage') }]}
+          label={t('addFishAudioRefID')}
+          name="FishAudio_refid"
+          rules={[{ required: false, message: t('FishAudioRefIDMessage') }]}
         >
-          <Input placeholder={t('ArkApiKeyMessage')} />
-        </Form.Item>
-        <Form.Item noStyle dependencies={['model_type']}>
-          {({ getFieldValue }) =>
-            getFieldValue('model_type') === 'chat' && (
-              <Form.Item
-                label={t('vision')}
-                valuePropName="checked"
-                name={'vision'}
-              >
-                <Switch />
-              </Form.Item>
-            )
-          }
+          <Input placeholder={t('FishAudioRefIDMessage')} />
         </Form.Item>
       </Form>
     </Modal>
   );
 };
 
-export default VolcEngineModal;
+export default FishAudioModal;
