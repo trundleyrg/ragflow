@@ -27,6 +27,7 @@ import {
 import { useCallback, useMemo } from 'react';
 import SettingTitle from '../components/setting-title';
 import { isLocalLlmFactory } from '../utils';
+import TencentCloudModal from './Tencent-modal';
 import ApiKeyModal from './api-key-modal';
 import BedrockModal from './bedrock-modal';
 import { IconMap } from './constant';
@@ -40,6 +41,7 @@ import {
   useSubmitOllama,
   useSubmitSpark,
   useSubmitSystemModelSetting,
+  useSubmitTencentCloud,
   useSubmitVolcEngine,
   useSubmityiyan,
 } from './hooks';
@@ -101,7 +103,8 @@ const ModelCard = ({ item, clickApiKey }: IModelCardProps) => {
                 item.name === 'Tencent Hunyuan' ||
                 item.name === 'XunFei Spark' ||
                 item.name === 'BaiduYiyan' ||
-                item.name === 'Fish Audio'
+                item.name === 'Fish Audio' ||
+                item.name === 'Tencent Cloud'
                   ? t('addTheModel')
                   : 'API-Key'}
                 <SettingOutlined />
@@ -184,6 +187,14 @@ const UserSettingModel = () => {
   } = useSubmitHunyuan();
 
   const {
+    TencentCloudAddingVisible,
+    hideTencentCloudAddingModal,
+    showTencentCloudAddingModal,
+    onTencentCloudAddingOk,
+    TencentCloudAddingLoading,
+  } = useSubmitTencentCloud();
+
+  const {
     SparkAddingVisible,
     hideSparkAddingModal,
     showSparkAddingModal,
@@ -223,11 +234,13 @@ const UserSettingModel = () => {
       'XunFei Spark': showSparkAddingModal,
       BaiduYiyan: showyiyanAddingModal,
       'Fish Audio': showFishAudioAddingModal,
+      'Tencent Cloud': showTencentCloudAddingModal,
     }),
     [
       showBedrockAddingModal,
       showVolcAddingModal,
       showHunyuanAddingModal,
+      showTencentCloudAddingModal,
       showSparkAddingModal,
       showyiyanAddingModal,
       showFishAudioAddingModal,
@@ -273,20 +286,22 @@ const UserSettingModel = () => {
             md: 3,
             lg: 4,
             xl: 4,
-            xxl: 8,
+            xxl: 10,
           }}
           dataSource={factoryList}
           renderItem={(item) => (
             <List.Item>
               <Card className={styles.toBeAddedCard}>
-                <Flex vertical gap={'large'}>
+                <Flex vertical gap={'middle'}>
                   <LlmIcon name={item.name} />
                   <Flex vertical gap={'middle'}>
-                    <b>{item.name}</b>
-                    <Text>{item.tags}</Text>
+                    <b>
+                      <Text ellipsis={{ tooltip: item.name }}>{item.name}</Text>
+                    </b>
+                    <Text className={styles.modelTags}>{item.tags}</Text>
                   </Flex>
                 </Flex>
-                <Divider></Divider>
+                <Divider className={styles.modelDivider}></Divider>
                 <Button type="link" onClick={() => handleAddModel(item.name)}>
                   {t('addTheModel')}
                 </Button>
@@ -349,6 +364,13 @@ const UserSettingModel = () => {
         loading={HunyuanAddingLoading}
         llmFactory={'Tencent Hunyuan'}
       ></HunyuanModal>
+      <TencentCloudModal
+        visible={TencentCloudAddingVisible}
+        hideModal={hideTencentCloudAddingModal}
+        onOk={onTencentCloudAddingOk}
+        loading={TencentCloudAddingLoading}
+        llmFactory={'Tencent TencentCloud'}
+      ></TencentCloudModal>
       <SparkModal
         visible={SparkAddingVisible}
         hideModal={hideSparkAddingModal}
