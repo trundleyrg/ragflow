@@ -4,16 +4,16 @@ import {
   IDialog,
   IStats,
   IToken,
-  Message,
 } from '@/interfaces/database/chat';
 import { IFeedbackRequestBody } from '@/interfaces/request/chat';
 import i18n from '@/locales/config';
-import { IClientConversation, IMessage } from '@/pages/chat/interface';
+import { IClientConversation } from '@/pages/chat/interface';
 import chatService from '@/services/chat-service';
-import { buildMessageUuid, isConversationIdExist } from '@/utils/chat';
+import { buildMessageListWithUuid, isConversationIdExist } from '@/utils/chat';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
+import { set } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'umi';
 
@@ -215,11 +215,7 @@ export const useFetchNextConversation = () => {
         // }
         const conversation = data?.data ?? {};
 
-        const messageList =
-          conversation?.message?.map((x: Message | IMessage) => ({
-            ...x,
-            id: buildMessageUuid(x),
-          })) ?? [];
+        const messageList = buildMessageListWithUuid(conversation?.message);
 
         return { ...conversation, message: messageList };
       }
@@ -294,7 +290,6 @@ export const useRemoveNextConversation = () => {
 };
 
 export const useDeleteMessage = () => {
-  // const queryClient = useQueryClient();
   const { conversationId } = useGetChatSearchParams();
 
   const {
@@ -308,9 +303,11 @@ export const useDeleteMessage = () => {
         messageId,
         conversationId,
       });
+
       if (data.retcode === 0) {
-        // queryClient.invalidateQueries({ queryKey: ['fetchConversationList'] });
+        message.success(i18n.t(`message.deleted`));
       }
+
       return data.retcode;
     },
   });
@@ -458,24 +455,25 @@ export const useCreateNextSharedConversation = () => {
   return { data, loading, createSharedConversation: mutateAsync };
 };
 
-export const useFetchNextSharedConversation = () => {
-  const {
-    data,
-    isPending: loading,
-    mutateAsync,
-  } = useMutation({
-    mutationKey: ['fetchSharedConversation'],
-    mutationFn: async (conversationId: string) => {
+export const useFetchNextSharedConversation = (conversationId: string) => {
+  const { data, isPending: loading } = useQuery({
+    queryKey: ['fetchSharedConversation'],
+    enabled: !!conversationId,
+    queryFn: async () => {
       const { data } = await chatService.getExternalConversation(
         null,
         conversationId,
       );
 
+      const messageList = buildMessageListWithUuid(data?.data?.message);
+
+      set(data, 'data.message', messageList);
+
       return data;
     },
   });
 
-  return { data, loading, fetchConversation: mutateAsync };
+  return { data, loading };
 };
 
 //#endregion
