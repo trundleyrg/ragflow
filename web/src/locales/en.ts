@@ -427,6 +427,9 @@ The above is the content you need to summarize.`,
       uploadFailed: 'Upload failed',
       regenerate: 'Regenerate',
       read: 'Read content',
+      tts: 'Text to speech',
+      ttsTip:
+        'To play the voice using voice conversion, please select TTS (speech conversion model) in the settings first.',
     },
     setting: {
       profile: 'Profile',
@@ -499,6 +502,7 @@ The above is the content you need to summarize.`,
       upgrade: 'Upgrade',
       addLlmTitle: 'Add LLM',
       modelName: 'Model name',
+      modelID: 'Model ID',
       modelUid: 'Model UID',
       modelNameMessage: 'Please input your model name!',
       modelType: 'Model type',
@@ -551,6 +555,15 @@ The above is the content you need to summarize.`,
       addFishAudioRefID: 'FishAudio Refrence ID',
       addFishAudioRefIDMessage:
         'Please input the Reference ID (leave blank to use the default model).',
+      GoogleModelIDMessage: 'Please input your model ID!',
+      addGoogleProjectID: 'Project ID',
+      GoogleProjectIDMessage: 'Please input your Project ID',
+      addGoogleServiceAccountKey:
+        'Service Account Key(Leave blank if you use Application Default Credentials)',
+      GoogleServiceAccountKeyMessage:
+        'Please input Google Cloud Service Account Key in base64 format',
+      addGoogleRegion: 'Google Cloud Region',
+      GoogleRegionMessage: 'Please input Google Cloud Region',
     },
     message: {
       registered: 'Registered!',

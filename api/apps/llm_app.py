@@ -150,6 +150,14 @@ def add_llm():
         llm_name = req["llm_name"]
         api_key = '{' + f'"fish_audio_ak": "{req.get("fish_audio_ak", "")}", ' \
                 f'"fish_audio_refid": "{req.get("fish_audio_refid", "59cb5986671546eaa6ca8ae6f29f6d22")}"' + '}'
+    elif factory == "Google Cloud":
+        llm_name = req["llm_name"]
+        api_key = (
+            "{" + f'"google_project_id": "{req.get("google_project_id", "")}", '
+            f'"google_region": "{req.get("google_region", "")}", '
+            f'"google_service_account_key": "{req.get("google_service_account_key", "")}"'
+            + "}"
+        )
     else:
         llm_name = req["llm_name"]
         api_key = req.get("api_key","xxxxxxxxxxxxxxx") 
@@ -228,7 +236,7 @@ def add_llm():
             key=llm["api_key"], model_name=llm["llm_name"], base_url=llm["api_base"]
         )
         try:
-            for resp in mdl.transcription("Hello~ Ragflower!"):
+            for resp in mdl.tts("Hello~ Ragflower!"):
                 pass
         except RuntimeError as e:
             msg += f"\nFail to access model({llm['llm_name']})." + str(e)
