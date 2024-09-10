@@ -12,6 +12,23 @@ mysql:
 minio:
   user: 'rag_flow'
   password: 'infini_rag_flow'
+  host: 'minio:9000'
+azure:
+  auth_type: 'sas'
+  container_url: 'container_url'
+  sas_token: 'sas_token'
+#azure:
+#  auth_type: 'spn'
+#  account_url: 'account_url'
+#  client_id: 'client_id'
+#  secret: 'secret'
+#  tenant_id: 'tenant_id'
+#  container_name: 'container_name'
+s3:
+  endpoint: 'endpoint'
+  access_key: 'access_key'
+  secret_key: 'secret_key'
+  region: 'region'
   host: '127.0.0.1:9000'
 es:
   hosts: 'http://127.0.0.1:1200'
@@ -23,7 +40,7 @@ redis:
   host: '127.0.0.1:6379'
 user_default_llm:
   factory: 'Tongyi-Qianwen'
-  api_key: 'sk-3cba7fb1ae24491ab88fb88c3254c3dd'
+  api_key: 'sk-xxxxxxxxxxxxx'
   base_url: ''
 oauth:
   github:
