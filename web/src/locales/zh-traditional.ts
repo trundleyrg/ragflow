@@ -146,6 +146,8 @@ export default {
       topK: 'Top-K',
       topKTip: `K塊將被送入Rerank型號。`,
       delimiter: `分段標識符`,
+      html4excel: '表格轉HTML',
+      html4excelTip: `Excel 是否會被解析為 HTML 表格。如果為 FALSE，Excel 中的每一行都會形成一個區塊。`,
     },
     knowledgeConfiguration: {
       titleDescription: '在這裡更新您的知識庫詳細信息，尤其是解析方法。',
@@ -402,6 +404,9 @@ export default {
       ttsTip: '是否用語音轉換播放語音，請先在設定裡面選擇TTS（語音轉換模型）。',
       relatedQuestion: '相關問題',
       answerTitle: '智慧回答',
+      multiTurn: '多輪對話優化',
+      multiTurnTip:
+        '在多輪對話的中，對去知識庫查詢的問題進行最佳化。會呼叫大模型額外消耗token。',
     },
     setting: {
       profile: '概述',
@@ -507,6 +512,12 @@ export default {
       SparkModelNameMessage: '請選擇星火模型!',
       addSparkAPIPassword: '星火 APIPassword',
       SparkAPIPasswordMessage: '請輸入 APIPassword',
+      addSparkAPPID: '星火 APPID',
+      SparkAPPIDMessage: '請輸入 APPID',
+      addSparkAPISecret: '星火 APISecret',
+      SparkAPISecretMessage: '請輸入 APISecret',
+      addSparkAPIKey: '星火 APIKey',
+      SparkAPIKeyMessage: '請輸入 APIKey',
       yiyanModelNameMessage: '輸入模型名稱',
       addyiyanAK: '一言 API KEY',
       yiyanAKMessage: '請輸入 API KEY',
