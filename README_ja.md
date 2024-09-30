@@ -18,8 +18,8 @@
     <a href="https://demo.ragflow.io" target="_blank">
         <img alt="Static Badge" src="https://img.shields.io/badge/Online-Demo-4e6b99"></a>
     <a href="https://hub.docker.com/r/infiniflow/ragflow" target="_blank">
-        <img src="https://img.shields.io/badge/docker_pull-ragflow:v0.11.0-brightgreen"
-            alt="docker pull infiniflow/ragflow:v0.11.0"></a>
+        <img src="https://img.shields.io/badge/docker_pull-ragflow:v0.12.0-brightgreen"
+            alt="docker pull infiniflow/ragflow:v0.12.0"></a>
       <a href="https://github.com/infiniflow/ragflow/blob/main/LICENSE">
     <img height="21" src="https://img.shields.io/badge/License-Apache--2.0-ffffff?labelColor=d4eaf7&color=2e6cc4" alt="license">
   </a>
@@ -48,6 +48,7 @@
 
 ## 🔥 最新情報
 
+- 2024-09-29 マルチラウンドダイアログを最適化。
 - 2024-09-13 ナレッジベース Q&A の検索モードを追加しました。
 - 2024-09-09 エージェントに医療相談テンプレートを追加しました。
 - 2024-08-22 RAG を介して SQL ステートメントへのテキストをサポートします。
@@ -139,7 +140,7 @@
    $ docker compose up -d
    ```
 
-   > 上記のコマンドを実行すると、RAGFlowの開発版dockerイメージが自動的にダウンロードされます。 特定のバージョンのDockerイメージをダウンロードして実行したい場合は、docker/.envファイルのRAGFLOW_VERSION変数を見つけて、対応するバージョンに変更してください。 例えば、RAGFLOW_VERSION=v0.11.0として、上記のコマンドを実行してください。
+   > 上記のコマンドを実行すると、RAGFlowの開発版dockerイメージが自動的にダウンロードされます。 特定のバージョンのDockerイメージをダウンロードして実行したい場合は、docker/.envファイルのRAGFLOW_IMAGE変数を見つけて、対応するバージョンに変更してください。 例えば、`RAGFLOW_IMAGE=infiniflow/ragflow:v0.12.0`として、上記のコマンドを実行してください。
 
    > コアイメージのサイズは約 9 GB で、ロードに時間がかかる場合があります。
 
@@ -152,12 +153,11 @@
    _以下の出力は、システムが正常に起動したことを確認するものです:_
 
    ```bash
-       ____                 ______ __
-      / __ \ ____ _ ____ _ / ____// /____  _      __
-     / /_/ // __ `// __ `// /_   / // __ \| | /| / /
-    / _, _// /_/ // /_/ // __/  / // /_/ /| |/ |/ /
-   /_/ |_| \__,_/ \__, //_/    /_/ \____/ |__/|__/
-                 /____/
+        ____   ___    ______ ______ __               
+       / __ \ /   |  / ____// ____// /____  _      __
+      / /_/ // /| | / / __ / /_   / // __ \| | /| / /
+     / _, _// ___ |/ /_/ // __/  / // /_/ /| |/ |/ / 
+    /_/ |_|/_/  |_|\____//_/    /_/ \____/ |__/|__/  
 
     * Running on all addresses (0.0.0.0)
     * Running on http://127.0.0.1:9380
@@ -193,6 +193,84 @@
 > ```bash
 > $ docker-compose up -d
 > ```
+
+## 🪛 ソースコードでDockerイメージを作成（埋め込みモデルなし）
+
+この Docker イメージのサイズは約 1GB で、外部の大モデルと埋め込みサービスに依存しています。
+
+```bash
+git clone https://github.com/infiniflow/ragflow.git
+cd ragflow/
+pip3 install huggingface-hub
+python3 download_deps.py
+docker build -f Dockerfile.slim -t infiniflow/ragflow:dev-slim .
+```
+
+## 🪚 ソースコードをコンパイルしたDockerイメージ（埋め込みモデルを含む）
+
+この Docker のサイズは約 9GB で、埋め込みモデルを含むため、外部の大モデルサービスのみが必要です。
+
+```bash
+git clone https://github.com/infiniflow/ragflow.git
+cd ragflow/
+pip3 install huggingface-hub
+python3 download_deps.py
+docker build -f Dockerfile -t infiniflow/ragflow:dev .
+```
+
+## 🔨 ソースコードからサービスを起動する方法
+
+1. Poetry をインストールする。すでにインストールされている場合は、このステップをスキップしてください:
+   ```bash
+   curl -sSL https://install.python-poetry.org | python3 -
+   ```
+
+2. ソースコードをクローンし、Python の依存関係をインストールする:
+   ```bash
+   git clone https://github.com/infiniflow/ragflow.git
+   cd ragflow/
+   export POETRY_VIRTUALENVS_CREATE=true POETRY_VIRTUALENVS_IN_PROJECT=true
+   ~/.local/bin/poetry install --sync --no-root # install RAGFlow dependent python modules
+   ```
+
+3. Docker Compose を使用して依存サービス（MinIO、Elasticsearch、Redis、MySQL）を起動する:
+   ```bash
+   docker compose -f docker/docker-compose-base.yml up -d
+   ```
+
+   `/etc/hosts` に以下の行を追加して、**docker/service_conf.yaml** に指定されたすべてのホストを `127.0.0.1` に解決します:  
+   ```
+   127.0.0.1       es01 mysql minio redis
+   ```  
+   **docker/service_conf.yaml** で mysql のポートを `5455` に、es のポートを `1200` に更新します（**docker/.env** に指定された通り）.
+
+4. HuggingFace にアクセスできない場合は、`HF_ENDPOINT` 環境変数を設定してミラーサイトを使用してください:
+ 
+   ```bash
+   export HF_ENDPOINT=https://hf-mirror.com
+   ```
+
+5. バックエンドサービスを起動する:
+   ```bash
+   source .venv/bin/activate
+   export PYTHONPATH=$(pwd)
+   bash docker/launch_backend_service.sh
+   ```
+
+6. フロントエンドの依存関係をインストールする:  
+   ```bash
+   cd web
+   npm install --force
+   ```  
+7. フロントエンドを設定し、**.umirc.ts** の `proxy.target` を `http://127.0.0.1:9380` に更新します:
+8. フロントエンドサービスを起動する:  
+   ```bash
+   npm run dev 
+   ```
+
+   _以下の画面で、システムが正常に起動したことを示します:_  
+
+   ![](https://github.com/user-attachments/assets/0daf462c-a24d-4496-a66f-92533534e187)
 
 ## 📚 ドキュメンテーション
 
