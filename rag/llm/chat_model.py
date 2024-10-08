@@ -630,7 +630,7 @@ class BedrockChat(Base):
                 modelId=self.model_name,
                 messages=history,
                 inferenceConfig=gen_conf,
-                system=[{"text": system}] if system else None,
+                system=[{"text": (system if system else "Answer the user's message.")}] ,
             )
             
             # Extract and print the response text.
@@ -675,7 +675,8 @@ class BedrockChat(Base):
             streaming_response = self.client.converse_stream(
                 modelId=self.model_name,
                 messages=history,
-                inferenceConfig=gen_conf
+                inferenceConfig=gen_conf,
+                system=[{"text": system if system else ""}],
             )
 
             # Extract and print the streamed response text in real-time.
@@ -1340,7 +1341,7 @@ class GoogleChat(Base):
                     + response["usage"]["output_tokens"],
                 )
             except Exception as e:
-                return ans + "\n**ERROR**: " + str(e), 0
+                return "\n**ERROR**: " + str(e), 0
         else:
             self.client._system_instruction = self.system
             if "max_tokens" in gen_conf:
