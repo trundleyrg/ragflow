@@ -9,7 +9,7 @@ class Chat(Base):
         self.id = ""
         self.name = "assistant"
         self.avatar = "path/to/avatar"
-        self.knowledgebases = ["kb1"]
+        self.dataset_ids = ["kb1"]
         self.llm = Chat.LLM(rag, {})
         self.prompt = Chat.Prompt(rag, {})
         super().__init__(rag, res_dict)
@@ -73,6 +73,3 @@ class Chat(Base):
         res = res.json()
         if res.get("code") != 0:
             raise Exception(res.get("message"))
-
-    def get_prologue(self):
-        return self.prompt.opener

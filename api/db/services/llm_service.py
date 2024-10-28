@@ -133,7 +133,8 @@ class TenantLLMService(CommonService):
             if model_config["llm_factory"] not in Seq2txtModel:
                 return
             return Seq2txtModel[model_config["llm_factory"]](
-                model_config["api_key"], model_config["llm_name"], lang,
+                key=model_config["api_key"], model_name=model_config["llm_name"],
+                lang=lang,
                 base_url=model_config["api_base"]
             )
         if llm_type == LLMType.TTS:
@@ -167,11 +168,13 @@ class TenantLLMService(CommonService):
         else:
             assert False, "LLM type error"
 
+        llm_name = mdlnm.split("@")[0] if "@" in mdlnm else mdlnm
+
         num = 0
         try:
-            for u in cls.query(tenant_id=tenant_id, llm_name=mdlnm):
+            for u in cls.query(tenant_id=tenant_id, llm_name=llm_name):
                 num += cls.model.update(used_tokens=u.used_tokens + used_tokens)\
-                    .where(cls.model.tenant_id == tenant_id, cls.model.llm_name == mdlnm)\
+                    .where(cls.model.tenant_id == tenant_id, cls.model.llm_name == llm_name)\
                     .execute()
         except Exception as e:
             pass
@@ -207,7 +210,7 @@ class LLMBundle(object):
         if not TenantLLMService.increase_usage(
                 self.tenant_id, self.llm_type, used_tokens):
             database_logger.error(
-                "Can't update token usage for {}/EMBEDDING".format(self.tenant_id))
+                "Can't update token usage for {}/EMBEDDING used_tokens: {}".format(self.tenant_id, used_tokens))
         return emd, used_tokens
 
     def encode_queries(self, query: str):
@@ -215,7 +218,7 @@ class LLMBundle(object):
         if not TenantLLMService.increase_usage(
                 self.tenant_id, self.llm_type, used_tokens):
             database_logger.error(
-                "Can't update token usage for {}/EMBEDDING".format(self.tenant_id))
+                "Can't update token usage for {}/EMBEDDING used_tokens: {}".format(self.tenant_id, used_tokens))
         return emd, used_tokens
 
     def similarity(self, query: str, texts: list):
@@ -223,7 +226,7 @@ class LLMBundle(object):
         if not TenantLLMService.increase_usage(
                 self.tenant_id, self.llm_type, used_tokens):
             database_logger.error(
-                "Can't update token usage for {}/RERANK".format(self.tenant_id))
+                "Can't update token usage for {}/RERANK used_tokens: {}".format(self.tenant_id, used_tokens))
         return sim, used_tokens
 
     def describe(self, image, max_tokens=300):
@@ -231,7 +234,7 @@ class LLMBundle(object):
         if not TenantLLMService.increase_usage(
                 self.tenant_id, self.llm_type, used_tokens):
             database_logger.error(
-                "Can't update token usage for {}/IMAGE2TEXT".format(self.tenant_id))
+                "Can't update token usage for {}/IMAGE2TEXT used_tokens: {}".format(self.tenant_id, used_tokens))
         return txt
 
     def transcription(self, audio):
@@ -239,7 +242,7 @@ class LLMBundle(object):
         if not TenantLLMService.increase_usage(
                 self.tenant_id, self.llm_type, used_tokens):
             database_logger.error(
-                "Can't update token usage for {}/SEQUENCE2TXT".format(self.tenant_id))
+                "Can't update token usage for {}/SEQUENCE2TXT used_tokens: {}".format(self.tenant_id, used_tokens))
         return txt
 
     def tts(self, text):
@@ -254,10 +257,10 @@ class LLMBundle(object):
 
     def chat(self, system, history, gen_conf):
         txt, used_tokens = self.mdl.chat(system, history, gen_conf)
-        if not TenantLLMService.increase_usage(
+        if isinstance(txt, int) and not TenantLLMService.increase_usage(
                 self.tenant_id, self.llm_type, used_tokens, self.llm_name):
             database_logger.error(
-                "Can't update token usage for {}/CHAT".format(self.tenant_id))
+                "Can't update token usage for {}/CHAT llm_name: {}, used_tokens: {}".format(self.tenant_id, self.llm_name, used_tokens))
         return txt
 
     def chat_streamly(self, system, history, gen_conf):
@@ -266,6 +269,6 @@ class LLMBundle(object):
                 if not TenantLLMService.increase_usage(
                         self.tenant_id, self.llm_type, txt, self.llm_name):
                     database_logger.error(
-                        "Can't update token usage for {}/CHAT".format(self.tenant_id))
+                        "Can't update token usage for {}/CHAT llm_name: {}, content: {}".format(self.tenant_id, self.llm_name, txt))
                 return
             yield txt

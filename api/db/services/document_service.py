@@ -38,7 +38,7 @@ from rag.utils.storage_factory import STORAGE_IMPL
 from rag.nlp import search, rag_tokenizer
 
 from api.db import FileType, TaskStatus, ParserType, LLMType
-from api.db.db_models import DB, Knowledgebase, Tenant, Task
+from api.db.db_models import DB, Knowledgebase, Tenant, Task, UserTenant
 from api.db.db_models import Document
 from api.db.services.common_service import CommonService
 from api.db.services.knowledgebase_service import KnowledgebaseService
@@ -61,14 +61,13 @@ class DocumentService(CommonService):
             docs = docs.where(
                 fn.LOWER(cls.model.name).contains(keywords.lower())
             )
-        count = docs.count()
         if desc:
             docs = docs.order_by(cls.model.getter_by(orderby).desc())
         else:
             docs = docs.order_by(cls.model.getter_by(orderby).asc())
 
         docs = docs.paginate(page_number, items_per_page)
-
+        count = docs.count()
         return list(docs.dicts()), count
 
 
@@ -266,6 +265,33 @@ class DocumentService(CommonService):
 
     @classmethod
     @DB.connection_context()
+    def accessible(cls, doc_id, user_id):
+        docs = cls.model.select(
+            cls.model.id).join(
+            Knowledgebase, on=(
+                    Knowledgebase.id == cls.model.kb_id)
+            ).join(UserTenant, on=(UserTenant.tenant_id == Knowledgebase.tenant_id)
+            ).where(cls.model.id == doc_id, UserTenant.user_id == user_id).paginate(0, 1)
+        docs = docs.dicts()
+        if not docs:
+            return False
+        return True
+
+    @classmethod
+    @DB.connection_context()
+    def accessible4deletion(cls, doc_id, user_id):
+        docs = cls.model.select(
+            cls.model.id).join(
+            Knowledgebase, on=(
+                    Knowledgebase.id == cls.model.kb_id)
+            ).where(cls.model.id == doc_id, Knowledgebase.created_by == user_id).paginate(0, 1)
+        docs = docs.dicts()
+        if not docs:
+            return False
+        return True
+
+    @classmethod
+    @DB.connection_context()
     def get_embd_id(cls, doc_id):
         docs = cls.model.select(
             Knowledgebase.embd_id).join(
@@ -291,7 +317,7 @@ class DocumentService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_thumbnails(cls, docids):
-        fields = [cls.model.id, cls.model.thumbnail]
+        fields = [cls.model.id, cls.model.kb_id, cls.model.thumbnail]
         return list(cls.model.select(
             *fields).where(cls.model.id.in_(docids)).dicts())
 
@@ -362,7 +388,7 @@ class DocumentService(CommonService):
                 elif finished:
                     if d["parser_config"].get("raptor", {}).get("use_raptor") and d["progress_msg"].lower().find(" raptor")<0:
                         queue_raptor_tasks(d)
-                        prg *= 0.98
+                        prg = 0.98 * len(tsks)/(len(tsks)+1)
                         msg.append("------ RAPTOR -------")
                     else:
                         status = TaskStatus.DONE.value
@@ -379,7 +405,8 @@ class DocumentService(CommonService):
                     info["progress_msg"] = msg
                 cls.update_by_id(d["id"], info)
             except Exception as e:
-                stat_logger.error("fetch task exception:" + str(e))
+                if str(e).find("'0'") < 0:
+                    stat_logger.error("fetch task exception:" + str(e))
 
     @classmethod
     @DB.connection_context()

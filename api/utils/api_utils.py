@@ -325,3 +325,35 @@ def get_error_data_result(retmsg='Sorry! Data missing!', retcode=RetCode.DATA_ER
 def generate_confirmation_token(tenent_id):
     serializer = URLSafeTimedSerializer(tenent_id)
     return "ragflow-" + serializer.dumps(get_uuid(), salt=tenent_id)[2:34]
+
+
+def valid(permission,valid_permission,language,valid_language,chunk_method,valid_chunk_method):
+    if valid_parameter(permission,valid_permission):
+        return valid_parameter(permission,valid_permission)
+    if valid_parameter(language,valid_language):
+        return valid_parameter(language,valid_language)
+    if valid_parameter(chunk_method,valid_chunk_method):
+        return valid_parameter(chunk_method,valid_chunk_method)
+
+def valid_parameter(parameter,valid_values):
+    if parameter and parameter not in valid_values:
+       return get_error_data_result(f"`{parameter}` is not in {valid_values}")
+
+def get_parser_config(chunk_method,parser_config):
+    if parser_config:
+        return parser_config
+    if not chunk_method:
+        chunk_method = "naive"
+    key_mapping={"naive":{"chunk_token_num": 128, "delimiter": "\\n!?;。；！？", "html4excel": False,"layout_recognize": True, "raptor": {"user_raptor": False}},
+                 "qa":{"raptor":{"use_raptor":False}},
+                 "resume":None,
+                 "manual":{"raptor":{"use_raptor":False}},
+                 "table":None,
+                 "paper":{"raptor":{"use_raptor":False}},
+                 "book":{"raptor":{"use_raptor":False}},
+                 "laws":{"raptor":{"use_raptor":False}},
+                 "presentation":{"raptor":{"use_raptor":False}},
+                 "one":None,
+                 "knowledge_graph":{"chunk_token_num":8192,"delimiter":"\\n!?;。；！？","entity_types":["organization","person","location","event","time"]}}
+    parser_config=key_mapping[chunk_method]
+    return parser_config

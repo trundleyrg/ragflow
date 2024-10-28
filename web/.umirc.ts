@@ -1,3 +1,4 @@
+import path from 'path';
 import { defineConfig } from 'umi';
 import { appName } from './src/conf.json';
 import routes from './src/routes';
@@ -5,7 +6,7 @@ import routes from './src/routes';
 export default defineConfig({
   title: appName,
   outputPath: 'dist',
-  // alias: { '@': './src' },
+  alias: { '@parent': path.resolve(__dirname, '../') },
   npmClient: 'npm',
   base: '/',
   routes,
@@ -35,5 +36,10 @@ export default defineConfig({
       logger: console,
       // pathRewrite: { '^/v1': '/v1' },
     },
+  },
+  chainWebpack(memo, args) {
+    memo.module.rule('markdown').test(/\.md$/).type('asset/source');
+
+    return memo;
   },
 });

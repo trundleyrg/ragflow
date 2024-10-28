@@ -15,8 +15,8 @@ class Session(Base):
         for message in self.messages:
             if "reference" in message:
                 message.pop("reference")
-        res = self.post(f"/chat/{self.chat_id}/session/{self.id}/completion",
-                        {"question": question, "stream": True}, stream=stream)
+        res = self.post(f"/chat/{self.chat_id}/completion",
+                        {"question": question, "stream": True,"session_id":self.id}, stream=stream)
         for line in res.iter_lines():
             line = line.decode("utf-8")
             if line.startswith("{"):
@@ -40,7 +40,7 @@ class Session(Base):
                                 "content": chunk["content_with_weight"],
                                 "document_id": chunk["doc_id"],
                                 "document_name": chunk["docnm_kwd"],
-                                "knowledgebase_id": chunk["kb_id"],
+                                "dataset_id": chunk["kb_id"],
                                 "image_id": chunk["img_id"],
                                 "similarity": chunk["similarity"],
                                 "vector_similarity": chunk["vector_similarity"],
@@ -75,10 +75,11 @@ class Chunk(Base):
         self.content = None
         self.document_id = ""
         self.document_name = ""
-        self.knowledgebase_id = ""
+        self.dataset_id = ""
         self.image_id = ""
         self.similarity = None
         self.vector_similarity = None
         self.term_similarity = None
         self.positions = None
         super().__init__(rag, res_dict)
+

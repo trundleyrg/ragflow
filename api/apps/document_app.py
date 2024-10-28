@@ -13,16 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License
 #
-import datetime
-import hashlib
-import json
-import os
 import pathlib
 import re
-import traceback
-from concurrent.futures import ThreadPoolExecutor
-from copy import deepcopy
-from io import BytesIO
 
 import flask
 from elasticsearch_dsl import Q
@@ -30,26 +22,22 @@ from flask import request
 from flask_login import login_required, current_user
 
 from api.db.db_models import Task, File
-from api.db.services.dialog_service import DialogService, ConversationService
 from api.db.services.file2document_service import File2DocumentService
 from api.db.services.file_service import FileService
-from api.db.services.llm_service import LLMBundle
 from api.db.services.task_service import TaskService, queue_tasks
-from api.db.services.user_service import TenantService, UserTenantService
-from graphrag.mind_map_extractor import MindMapExtractor
-from rag.app import naive
+from api.db.services.user_service import UserTenantService
 from rag.nlp import search
 from rag.utils.es_conn import ELASTICSEARCH
 from api.db.services import duplicate_name
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.utils.api_utils import server_error_response, get_data_error_result, validate_request
 from api.utils import get_uuid
-from api.db import FileType, TaskStatus, ParserType, FileSource, LLMType
+from api.db import FileType, TaskStatus, ParserType, FileSource
 from api.db.services.document_service import DocumentService, doc_upload_and_parse
-from api.settings import RetCode, stat_logger
+from api.settings import RetCode
 from api.utils.api_utils import get_json_result
 from rag.utils.storage_factory import STORAGE_IMPL
-from api.utils.file_utils import filename_type, thumbnail, get_project_base_directory
+from api.utils.file_utils import filename_type, thumbnail
 from api.utils.web_utils import html2pdf, is_valid_url
 from api.contants import IMG_BASE64_PREFIX
 
@@ -221,9 +209,17 @@ def list_docs():
 
 
 @manager.route('/infos', methods=['POST'])
+@login_required
 def docinfos():
     req = request.json
     doc_ids = req["doc_ids"]
+    for doc_id in doc_ids:
+        if not DocumentService.accessible(doc_id, current_user.id):
+            return get_json_result(
+                data=False,
+                retmsg='No authorization.',
+                retcode=RetCode.AUTHENTICATION_ERROR
+            )
     docs = DocumentService.get_by_ids(doc_ids)
     return get_json_result(data=list(docs.dicts()))
 
@@ -254,10 +250,16 @@ def thumbnails():
 def change_status():
     req = request.json
     if str(req["status"]) not in ["0", "1"]:
-        get_json_result(
+        return get_json_result(
             data=False,
             retmsg='"Status" must be either 0 or 1!',
             retcode=RetCode.ARGUMENT_ERROR)
+
+    if not DocumentService.accessible(req["doc_id"], current_user.id):
+        return get_json_result(
+            data=False,
+            retmsg='No authorization.',
+            retcode=RetCode.AUTHENTICATION_ERROR)
 
     try:
         e, doc = DocumentService.get_by_id(req["doc_id"])
@@ -297,6 +299,15 @@ def rm():
     req = request.json
     doc_ids = req["doc_id"]
     if isinstance(doc_ids, str): doc_ids = [doc_ids]
+
+    for doc_id in doc_ids:
+        if not DocumentService.accessible4deletion(doc_id, current_user.id):
+            return get_json_result(
+                data=False,
+                retmsg='No authorization.',
+                retcode=RetCode.AUTHENTICATION_ERROR
+            )
+
     root_folder = FileService.get_root_folder(current_user.id)
     pf_id = root_folder["id"]
     FileService.init_knowledgebase_docs(pf_id, current_user.id)
@@ -335,6 +346,13 @@ def rm():
 @validate_request("doc_ids", "run")
 def run():
     req = request.json
+    for doc_id in req["doc_ids"]:
+        if not DocumentService.accessible(doc_id, current_user.id):
+            return get_json_result(
+                data=False,
+                retmsg='No authorization.',
+                retcode=RetCode.AUTHENTICATION_ERROR
+            )
     try:
         for id in req["doc_ids"]:
             info = {"run": str(req["run"]), "progress": 0}
@@ -368,6 +386,12 @@ def run():
 @validate_request("doc_id", "name")
 def rename():
     req = request.json
+    if not DocumentService.accessible(req["doc_id"], current_user.id):
+        return get_json_result(
+            data=False,
+            retmsg='No authorization.',
+            retcode=RetCode.AUTHENTICATION_ERROR
+        )
     try:
         e, doc = DocumentService.get_by_id(req["doc_id"])
         if not e:
@@ -428,6 +452,13 @@ def get(doc_id):
 @validate_request("doc_id", "parser_id")
 def change_parser():
     req = request.json
+
+    if not DocumentService.accessible(req["doc_id"], current_user.id):
+        return get_json_result(
+            data=False,
+            retmsg='No authorization.',
+            retcode=RetCode.AUTHENTICATION_ERROR
+        )
     try:
         e, doc = DocumentService.get_by_id(req["doc_id"])
         if not e:
