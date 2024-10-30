@@ -528,6 +528,7 @@ export const initialInvokeValues = {
   "Connection": "keep-alive"
 }`,
   proxy: 'http://',
+  clean_html: false,
 };
 
 export const CategorizeAnchorPointPositions = [
@@ -608,6 +609,7 @@ export const RestrictedUpstreamMap = {
   [Operator.TuShare]: [Operator.Begin],
   [Operator.Crawler]: [Operator.Begin],
   [Operator.Note]: [],
+  [Operator.Invoke]: [Operator.Begin],
 };
 
 export const NodeMap = {
@@ -642,7 +644,7 @@ export const NodeMap = {
   [Operator.TuShare]: 'ragNode',
   [Operator.Note]: 'noteNode',
   [Operator.Crawler]: 'ragNode',
-  [Operator.Invoke]: 'ragNode',
+  [Operator.Invoke]: 'invokeNode',
 };
 
 export const LanguageOptions = [
