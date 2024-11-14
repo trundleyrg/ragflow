@@ -103,8 +103,9 @@ class Pdf(PdfParser):
         qai_list = []
         last_q, last_a, last_tag = '', '', ''
         last_index = -1
-        last_box = {'text':''}
+        last_box = {'text': ''}
         last_bull = None
+
         def sort_key(element):
             tbls_pn = element[1][0][0]
             tbls_top = element[1][0][3]
@@ -122,28 +123,32 @@ class Pdf(PdfParser):
             tbl_pn, tbl_left, tbl_right, tbl_top, tbl_bottom, tbl_tag, tbl_text = self.get_tbls_info(tbls, tbl_index)
             if not has_bull:  # No question bullet
                 if not last_q:
-                    if tbl_pn < line_pn or (tbl_pn == line_pn and tbl_top <= line_top):    # image passed
+                    if tbl_pn < line_pn or (tbl_pn == line_pn and tbl_top <= line_top):  # image passed
                         tbl_index += 1
                     continue
                 else:
                     sum_tag = line_tag
                     sum_section = section
-                    while ((tbl_pn == last_pn and tbl_top>= last_bottom) or (tbl_pn > last_pn)) \
-                        and ((tbl_pn == line_pn and tbl_top <= line_top) or (tbl_pn < line_pn)):    # add image at the middle of current answer
+                    while ((tbl_pn == last_pn and tbl_top >= last_bottom) or (tbl_pn > last_pn)) \
+                            and ((tbl_pn == line_pn and tbl_top <= line_top) or (
+                            tbl_pn < line_pn)):  # add image at the middle of current answer
                         sum_tag = f'{tbl_tag}{sum_tag}'
                         sum_section = f'{tbl_text}{sum_section}'
                         tbl_index += 1
-                        tbl_pn, tbl_left, tbl_right, tbl_top, tbl_bottom, tbl_tag, tbl_text = self.get_tbls_info(tbls, tbl_index)
+                        tbl_pn, tbl_left, tbl_right, tbl_top, tbl_bottom, tbl_tag, tbl_text = self.get_tbls_info(tbls,
+                                                                                                                 tbl_index)
                     last_a = f'{last_a}{sum_section}'
                     last_tag = f'{last_tag}{sum_tag}'
             else:
                 if last_q:
-                    while ((tbl_pn == last_pn and tbl_top>= last_bottom) or (tbl_pn > last_pn)) \
-                        and ((tbl_pn == line_pn and tbl_top <= line_top) or (tbl_pn < line_pn)):    # add image at the end of last answer
+                    while ((tbl_pn == last_pn and tbl_top >= last_bottom) or (tbl_pn > last_pn)) \
+                            and ((tbl_pn == line_pn and tbl_top <= line_top) or (
+                            tbl_pn < line_pn)):  # add image at the end of last answer
                         last_tag = f'{last_tag}{tbl_tag}'
                         last_a = f'{last_a}{tbl_text}'
                         tbl_index += 1
-                        tbl_pn, tbl_left, tbl_right, tbl_top, tbl_bottom, tbl_tag, tbl_text = self.get_tbls_info(tbls, tbl_index)
+                        tbl_pn, tbl_left, tbl_right, tbl_top, tbl_bottom, tbl_tag, tbl_text = self.get_tbls_info(tbls,
+                                                                                                                 tbl_index)
                     image, poss = self.crop(last_tag, need_position=True)
                     qai_list.append((last_q, last_a, image, poss))
                     last_q, last_a, last_tag = '', '', ''
@@ -160,7 +165,7 @@ class Pdf(PdfParser):
     def get_tbls_info(self, tbls, tbl_index):
         if tbl_index >= len(tbls):
             return 1, 0, 0, 0, 0, '@@0\t0\t0\t0\t0##', ''
-        tbl_pn = tbls[tbl_index][1][0][0]+1
+        tbl_pn = tbls[tbl_index][1][0][0] + 1
         tbl_left = tbls[tbl_index][1][0][1]
         tbl_right = tbls[tbl_index][1][0][2]
         tbl_top = tbls[tbl_index][1][0][3]
@@ -168,7 +173,7 @@ class Pdf(PdfParser):
         tbl_tag = "@@{}\t{:.1f}\t{:.1f}\t{:.1f}\t{:.1f}##" \
             .format(tbl_pn, tbl_left, tbl_right, tbl_top, tbl_bottom)
         tbl_text = ''.join(tbls[tbl_index][0][1])
-        return tbl_pn, tbl_left, tbl_right, tbl_top, tbl_bottom, tbl_tag,
+        return tbl_pn, tbl_left, tbl_right, tbl_top, tbl_bottom, tbl_tag, tbl_text
 
 
 class Docx(DocxParser):
@@ -186,6 +191,14 @@ class Docx(DocxParser):
         image = Image.open(BytesIO(image.blob)).convert('RGB')
         return image
 
+    def get_table_heading(self, table, title_style="Heading 2"):
+        for paragraph in self.doc.paragraphs:
+            if paragraph._element.getparent() == table._element.getparent():
+                print(paragraph.style.name)
+                if paragraph.style.name.startswith(title_style):
+                    return paragraph.text
+        return None
+
     def __call__(self, filename, binary=None, from_page=0, to_page=100000, callback=None):
         self.doc = Document(
             filename) if not binary else Document(BytesIO(binary))
@@ -199,11 +212,11 @@ class Docx(DocxParser):
             question_level, p_text = 0, ''
             if from_page <= pn < to_page and p.text.strip():
                 question_level, p_text = docx_question_level(p)
-            if not question_level or question_level > 6: # not a question
+            if not question_level or question_level > 6:  # not a question
                 last_answer = f'{last_answer}\n{p_text}'
                 current_image = self.get_picture(self.doc, p)
                 last_image = concat_img(last_image, current_image)
-            else:   # is a question
+            else:  # is a question
                 if last_answer or last_image:
                     sum_question = '\n'.join(question_stack)
                     if sum_question:
@@ -226,17 +239,17 @@ class Docx(DocxParser):
             sum_question = '\n'.join(question_stack)
             if sum_question:
                 qai_list.append((sum_question, last_answer, last_image))
-                
+
         tbls = []
         for tb in self.doc.tables:
-            html= "<table>"
+            html = "<table>"
             for r in tb.rows:
                 html += "<tr>"
                 i = 0
                 while i < len(r.cells):
                     span = 1
                     c = r.cells[i]
-                    for j in range(i+1, len(r.cells)):
+                    for j in range(i + 1, len(r.cells)):
                         if c.text == r.cells[j].text:
                             span += 1
                             i = j
@@ -245,6 +258,7 @@ class Docx(DocxParser):
                 html += "</tr>"
             html += "</table>"
             tbls.append(((None, html), ""))
+
         return qai_list, tbls
 
 
@@ -332,9 +346,10 @@ def chunk(filename, binary=None, lang="Chinese", callback=None, **kwargs):
         while i < len(lines):
             arr = lines[i].split(delimiter)
             if len(arr) != 2:
-                if question: answer += "\n" + lines[i]
+                if question:
+                    answer += "\n" + lines[i]
                 else:
-                    fails.append(str(i+1))
+                    fails.append(str(i + 1))
             elif len(arr) == 2:
                 if question and answer: res.append(beAdoc(deepcopy(doc), question, answer, eng))
                 question, answer = arr
@@ -374,13 +389,15 @@ def chunk(filename, binary=None, lang="Chinese", callback=None, **kwargs):
             if not code_block:
                 question_level, question = mdQuestionLevel(l)
 
-            if not question_level or question_level > 6: # not a question
+            if not question_level or question_level > 6:  # not a question
+                # md仅支持最多6个#的标题级别
                 last_answer = f'{last_answer}\n{l}'
-            else:   # is a question
+            else:  # is a question
                 if last_answer.strip():
                     sum_question = '\n'.join(question_stack)
                     if sum_question:
-                        res.append(beAdoc(deepcopy(doc), sum_question, markdown(last_answer, extensions=['markdown.extensions.tables']), eng))
+                        res.append(beAdoc(deepcopy(doc), sum_question,
+                                          markdown(last_answer, extensions=['markdown.extensions.tables']), eng))
                     last_answer = ''
 
                 i = question_level
@@ -392,13 +409,14 @@ def chunk(filename, binary=None, lang="Chinese", callback=None, **kwargs):
         if last_answer.strip():
             sum_question = '\n'.join(question_stack)
             if sum_question:
-                res.append(beAdoc(deepcopy(doc), sum_question, markdown(last_answer, extensions=['markdown.extensions.tables']), eng))
+                res.append(beAdoc(deepcopy(doc), sum_question,
+                                  markdown(last_answer, extensions=['markdown.extensions.tables']), eng))
         return res
 
     elif re.search(r"\.docx$", filename, re.IGNORECASE):
         docx_parser = Docx()
         qai_list, tbls = docx_parser(filename, binary,
-                                    from_page=0, to_page=10000, callback=callback)
+                                     from_page=0, to_page=10000, callback=callback)
         res = tokenize_table(tbls, doc, eng)
         for q, a, image in qai_list:
             res.append(beAdocDocx(deepcopy(doc), q, a, eng, image))
@@ -412,5 +430,12 @@ if __name__ == "__main__":
     import sys
 
     def dummy(prog=None, msg=""):
+        print(prog, msg)
+
+    def dummy(prog=None, msg=""):
         pass
-    chunk(sys.argv[1], from_page=0, to_page=10, callback=dummy)
+
+
+    # chunk(sys.argv[1], from_page=0, to_page=10, callback=dummy)
+    # chunk(r"E:\tmp\magic-pdf\src\auto\src_md\src_qa.md", from_page=0, to_page=100, callback=dummy)
+    chunk(r"/home/yinrigao/ragflow/debug/docs/2、流出道单瓣补片注册补正资料（受理号：CQZ1900412 补正回复）.docx", from_page=0, to_page=100, callback=dummy)
