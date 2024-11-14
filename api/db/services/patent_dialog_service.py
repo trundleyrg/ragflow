@@ -18,7 +18,61 @@ from rag.utils import rmSpace, num_tokens_from_string, encoder
 from api.utils.file_utils import get_project_base_directory
 
 
-def patent_search(dialog, messages, target="涤纶补片"):
+def combine_infos(infos_a: dict, infos_b: dict) -> dict:
+    #
+    infos = {"total": infos_a["total"],
+             "chunks": [],
+             "doc_aggs": {}}
+    chunk_id_set = set()
+    doc_id_set = set()
+    infos_a["chunks"].extend(infos_b["chunks"])
+    for chunk_dict in infos_a["chunks"]:
+        if chunk_dict["chunk_id"] not in chunk_id_set:
+            chunk_id_set.add(chunk_dict["chunk_id"])
+            infos["chunks"].append(chunk_dict)
+        else:
+            continue
+        if chunk_dict["doc_id"] not in doc_id_set:
+            infos["doc_aggs"][chunk_dict["docnm_kwd"]] = {"doc_id": chunk_dict["doc_id"], "count": 1}
+            doc_id_set.add(chunk_dict["doc_id"])
+        else:
+            infos["doc_aggs"][chunk_dict["docnm_kwd"]]["count"] += 1
+
+    # doc_aggs
+    infos["doc_aggs"] = [{"doc_name": k, "doc_id": v["doc_id"], "count": v["count"]} for k, v in
+                         sorted(infos["doc_aggs"].items(), key=lambda x: x[1]["count"] * -1)]
+    return infos
+
+
+def rewrite_query(dialog, query, target="涤纶补片"):
+    """
+    查询重写
+    :param dialog:
+    :param query:
+    :param messages:
+    :param target:
+    :return:
+    """
+    # query = "请参照涤纶补片的介绍方式，讲解什么是流通道单瓣补片"
+
+    # HyDE方案：LLM创建一个假设答案来响应查询。查询和生成答案都转换为embedding，在chunk中检索相似结果。
+    system_prompt = (f"你是一个医疗产品注册助手，你需要根据用户的问题，给出一个合适的答案。"
+                     f"当前问题的答案与注册产品{target}有关。"
+                     f"回答使用的专业词汇应该准确无误。回答应该简要，字数限制在300字以内。")
+    chat_mdl = LLMBundle(dialog.tenant_id, LLMType.CHAT, dialog.llm_id)
+    gen_conf = {  # hyde 配置参数
+        "temperature": 0.1,
+        "top_p": 0.2,
+        "presence_penalty": 0.4,
+        "frequency_penalty": 0.6,
+        "max_tokens": 512
+    }
+    hypo_answer = chat_mdl.chat(system_prompt, query, gen_conf)
+    print(query, hypo_answer)
+    return hypo_answer
+
+
+def patent_search(dialog, messages, target="涤纶补片", augment=True):
     """
     检索各知识库中的相似数据
     """
@@ -44,18 +98,33 @@ def patent_search(dialog, messages, target="涤纶补片"):
 
     # region 检索与用户问题相关内容
     tenant_ids = list(set([kb.tenant_id for kb in kbs]))
-    kbinfos = retr.patent_retrieval(" ".join(questions),
-                                    target_product=target,
+    kb_infos = retr.patent_retrieval(" ".join(questions),
+                                     target_product=target,
+                                     embd_mdl=embd_mdl,
+                                     tenant_ids=tenant_ids,
+                                     kb_ids=dialog.kb_ids,
+                                     page_size=dialog.top_n,
+                                     similarity_threshold=dialog.similarity_threshold,
+                                     vector_similarity_weight=dialog.vector_similarity_weight,
+                                     doc_ids=None,
+                                     top=dialog.top_k, rerank_mdl=rerank_mdl)
+    if augment:
+        hypo_answer = rewrite_query(dialog, [m for m in messages if m["role"] == "user"][-1:], target=target)
+        hypo_infos = retr.retrieval(str(hypo_answer),
                                     embd_mdl=embd_mdl,
                                     tenant_ids=tenant_ids,
                                     kb_ids=dialog.kb_ids,
+                                    page=1,
                                     page_size=dialog.top_n,
                                     similarity_threshold=dialog.similarity_threshold,
                                     vector_similarity_weight=dialog.vector_similarity_weight,
                                     doc_ids=None,
-                                    top=dialog.top_k, rerank_mdl=rerank_mdl)
+                                    aggs=False,
+                                    top=dialog.top_k,
+                                    rerank_mdl=rerank_mdl)
+        kb_infos = combine_infos(kb_infos, hypo_infos)
     # endregion
-    return True, kbinfos
+    return True, kb_infos
 
 
 def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):

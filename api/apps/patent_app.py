@@ -74,7 +74,7 @@ def search():
     e, msg, dia = get_conversation(req["conversation_id"], req["messages"])
     if not e:
         return get_data_error_result(message=msg)
-    state, relative_info = patent_search(dia, msg, target=req["target"])
+    state, relative_info = patent_search(dia, msg, target=req["target"], augment=req.get("augment", False))
     return get_json_result(data=relative_info)
 
 
@@ -94,7 +94,8 @@ def completion():
     e, msg, dia = get_conversation(req["conversation_id"], req["messages"])
     if not e:
         return get_data_error_result(message=msg)
-    state, relative_info = patent_search(dia, msg, target=req["target"])
+    state, relative_info = patent_search(dia, msg, target=req["target"], augment=req.get("augment", False))
+
     req["messages"] = msg
     if not state:
         return get_data_error_result(message=relative_info)
