@@ -367,6 +367,100 @@ class Dealer:
 
         return ranks
 
+    def patent_retrieval(self, question, target_product, embd_mdl, tenant_ids, kb_ids, page_size, similarity_threshold=0.2,
+                         vector_similarity_weight=0.3, top=1024, doc_ids=None, rerank_mdl=None,
+                         highlight=False):
+        # region 检查关键形参
+        if not question:
+            return {"total": 0, "chunks": [], "doc_aggs": {}}
+        if isinstance(tenant_ids, str):
+            tenant_ids = tenant_ids.split(",")
+        # endregion
+
+        # region 检索相关chunk
+        req = {"kb_ids": kb_ids, "doc_ids": doc_ids,
+               "size": 128,  # es查询结果大小，返回128条记录
+               "question": question, "vector": True, "topk": top,
+               "similarity": similarity_threshold,
+               "available_int": 1}
+
+        # todo: 依据kb_ids分别查询对应数据库返回值
+        sres = self.search(req, [index_name(tid) for tid in tenant_ids], kb_ids, embd_mdl, highlight)
+        # endregion
+
+        # region 依据important_kwd，将chunk分类为不同类型
+        sres_dict = {}
+        for chunk_id in sres.field:
+            important_kwd = sres.field[chunk_id]["important_kwd"]
+            if not isinstance(important_kwd, list):
+                important_kwd = [important_kwd]
+            for kwd in important_kwd:
+                sres_dict.setdefault(kwd, []).append(chunk_id)
+        # endregion
+
+        # region 按照产品种类分组排序相似数据
+        def create_sres(sres, chunk_ids):
+            new_sres = Dealer.SearchResult(
+                total=sres.total,
+                ids=chunk_ids,
+                query_vector=sres.query_vector,
+                field=dict(),
+                highlight=sres.highlight,
+                aggregation=sres.aggregation,
+                keywords=sres.keywords,
+                group_docs=sres.group_docs
+            )
+            for cur_chunk_id in sres.field:
+                if cur_chunk_id in chunk_ids:
+                    new_sres.field[cur_chunk_id] = sres.field[cur_chunk_id]
+            return new_sres
+
+        ranks = {"total": sres.total, "chunks": [], "doc_aggs": {}}
+        for kwd in sres_dict.keys():  # 分类添加
+            cur_sres = create_sres(sres, sres_dict[kwd])
+            sim, tsim, vsim = self.rerank_by_model(rerank_mdl,
+                                                   cur_sres, question, 1 - vector_similarity_weight,
+                                                   vector_similarity_weight)
+            idx = np.argsort(sim * -1)  # 依据sim排序分数
+            dim = len(sres.query_vector)
+            j = 0
+            for i in idx:
+                # if sim[i] < similarity_threshold:  # 去掉阈值限制
+                #     break
+                if kwd == target_product and j >= page_size:
+                    break  # 满足数量，退出循环
+                elif kwd != target_product and j >= page_size / 2:
+                    break  # 非目标库，匹配数量减半
+                j += 1
+                id = cur_sres.ids[i]
+                doc_name = cur_sres.field[id]["docnm_kwd"]
+                doc_id = cur_sres.field[id]["doc_id"]
+                d = {
+                    "chunk_id": id,
+                    "content_ltks": cur_sres.field[id]["content_ltks"],
+                    "content_with_weight": cur_sres.field[id]["content_with_weight"],
+                    "doc_id": cur_sres.field[id]["doc_id"],
+                    "docnm_kwd": doc_name,
+                    "kb_id": cur_sres.field[id]["kb_id"],
+                    "important_kwd": cur_sres.field[id].get("important_kwd", []),
+                    "img_id": cur_sres.field[id].get("img_id", ""),
+                    "similarity": sim[i],
+                    "vector_similarity": vsim[i],
+                    "term_similarity": tsim[i],
+                    "vector": cur_sres.field[id].get(f"q_{dim}_vec", [0.0] * dim),
+                    "positions": cur_sres.field[id].get("position_int", "").split("\t")
+                }
+                ranks["chunks"].append(d)
+                if doc_name not in ranks["doc_aggs"]:
+                    ranks["doc_aggs"][doc_name] = {"doc_id": doc_id, "count": 0}
+                ranks["doc_aggs"][doc_name]["count"] += 1  # 统计同一篇文章中的chunk数量
+        # endregion
+
+        ranks["doc_aggs"] = [{"doc_name": k, "doc_id": v["doc_id"], "count": v["count"]} for k, v in
+                             sorted(ranks["doc_aggs"].items(),
+                                    key=lambda x: x[1]["count"] * -1)]  # 按引用chunk数量排序文档。
+        return ranks
+
     def sql_retrieval(self, sql, fetch_size=128, format="json"):
         tbl = self.dataStore.sql(sql, fetch_size, format)
         return tbl
