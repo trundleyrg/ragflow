@@ -211,12 +211,11 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
                 recall_docs = kb_infos["doc_aggs"]
             kb_infos["doc_aggs"] = recall_docs
 
-            refs = deepcopy(kb_infos)
-            for c in refs["chunks"]:
+            for c in kb_infos["chunks"]:
                 if c.get("vector"):
                     del c["vector"]
 
-        return {"answer": answer, "reference": refs, "prompt": prompt}
+        return {"answer": answer, "reference": kb_infos, "prompt": prompt}
 
     # if stream:
     #     last_ans = ""
