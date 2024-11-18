@@ -76,7 +76,7 @@ class Pdf(PdfParser):
         title = ""
         authors = []
         i = 0
-        while i < min(32, len(self.boxes)-1):
+        while i < min(32, len(self.boxes) - 1):
             b = self.boxes[i]
             i += 1
             if b.get("layoutno", "").find("title") >= 0:
@@ -281,4 +281,7 @@ if __name__ == "__main__":
 
     def dummy(prog=None, msg=""):
         pass
-    chunk(sys.argv[1], callback=dummy)
+
+
+    # chunk(sys.argv[1], callback=dummy)
+    chunk(r"./deepdoc/test/src.pdf", callback=dummy, zoomin=1)

@@ -46,6 +46,7 @@ class RAGFlowPptParser(object):
         txts = []
         self.total_page = len(ppt.slides)
         for i, slide in enumerate(ppt.slides):
+            # 逐页解析
             if i < from_page:
                 continue
             if i >= to_page:
@@ -53,6 +54,7 @@ class RAGFlowPptParser(object):
             texts = []
             for shape in sorted(
                     slide.shapes, key=lambda x: ((x.top if x.top is not None else 0) // 10, x.left)):
+                # 左上角排序
                 txt = self.__extract(shape)
                 if txt:
                     texts.append(txt)

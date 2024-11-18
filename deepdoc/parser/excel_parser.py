@@ -54,6 +54,11 @@ class RAGFlowExcelParser:
         return tb_chunks
 
     def __call__(self, fnm):
+        """
+
+        :param fnm:
+        :return: ["key1：line1_value1; key2: line2_value2", "key1: line2_value1; key2: line2_value2"]
+        """
         if isinstance(fnm, str):
             wb = load_workbook(fnm)
         else:
@@ -62,7 +67,8 @@ class RAGFlowExcelParser:
         for sheetname in wb.sheetnames:
             ws = wb[sheetname]
             rows = list(ws.rows)
-            if not rows:continue
+            if not rows:
+                continue
             ti = list(rows[0])
             for r in list(rows[1:]):
                 l = []
@@ -80,6 +86,7 @@ class RAGFlowExcelParser:
 
     @staticmethod
     def row_number(fnm, binary):
+        """行数统计"""
         if fnm.split(".")[-1].lower().find("xls") >= 0:
             wb = load_workbook(BytesIO(binary))
             total = 0

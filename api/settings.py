@@ -19,7 +19,7 @@ from enum import IntEnum, Enum
 from api.utils.file_utils import get_project_base_directory
 from api.utils.log_utils import LoggerFactory, getLogger
 import rag.utils.es_conn
-import rag.utils.infinity_conn
+# import rag.utils.infinity_conn
 
 # Logger
 LoggerFactory.set_directory(
@@ -208,10 +208,7 @@ AUTHENTICATION_DEFAULT_TIMEOUT = 7 * 24 * 60 * 60  # s
 PRIVILEGE_COMMAND_WHITELIST = []
 CHECK_NODES_IDENTITY = False
 
-if 'username' in get_base_config("es", {}):
-    docStoreConn = rag.utils.es_conn.ESConnection()
-else:
-    docStoreConn = rag.utils.infinity_conn.InfinityConnection()
+docStoreConn = rag.utils.es_conn.ESConnection()
 retrievaler = search.Dealer(docStoreConn)
 kg_retrievaler = kg_search.KGSearch(docStoreConn)
 

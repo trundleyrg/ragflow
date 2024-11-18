@@ -141,14 +141,14 @@ def chat(dialog, messages, stream=True, **kwargs):
             TenantLLMService.query(tenant_id=dialog.tenant_id, llm_name=llm_id, llm_factory=fid)
         if not llm:
             raise LookupError("LLM(%s) not found" % dialog.llm_id)
-        max_tokens = 8192
+        max_tokens = 32768
     else:
         max_tokens = llm[0].max_tokens
     kbs = KnowledgebaseService.get_by_ids(dialog.kb_ids)
     embd_nms = list(set([kb.embd_id for kb in kbs]))
     if len(embd_nms) != 1:
         yield {"answer": "**ERROR**: Knowledge bases use different embedding models.", "reference": []}
-        return {"answer": "**ERROR**: Knowledge bases use different embedding models.", "reference": []}
+        return
 
     is_kg = all([kb.parser_id == ParserType.KG for kb in kbs])
     retr = retrievaler if not is_kg else kg_retrievaler
@@ -240,9 +240,11 @@ def chat(dialog, messages, stream=True, **kwargs):
     prompt += "\n\n### Query:\n%s" % " ".join(questions)
 
     if "max_tokens" in gen_conf:
-        gen_conf["max_tokens"] = min(
-            gen_conf["max_tokens"],
-            max_tokens - used_token_count)
+        # gen_conf["max_tokens"] = min(
+        #     gen_conf["max_tokens"],
+        #     max_tokens - used_token_count)
+        gen_conf["max_tokens"] = max_tokens - used_token_count
+    # endregion
 
     def decorate_answer(answer):
         nonlocal prompt_config, knowledges, kwargs, kbinfos, prompt, retrieval_tm

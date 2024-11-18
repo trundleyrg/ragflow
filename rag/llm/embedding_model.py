@@ -30,8 +30,9 @@ import asyncio
 from api.settings import LIGHTEN
 from api.utils.file_utils import get_home_cache_dir
 from rag.utils import num_tokens_from_string, truncate
-import google.generativeai as genai 
+import google.generativeai as genai
 import json
+
 
 class Base(ABC):
     def __init__(self, key, model_name):
@@ -47,6 +48,7 @@ class Base(ABC):
 class DefaultEmbedding(Base):
     _model = None
     _model_lock = threading.Lock()
+
     def __init__(self, key, model_name, **kwargs):
         """
         If you have trouble downloading HuggingFace models, -_^ this might help!!
@@ -65,12 +67,14 @@ class DefaultEmbedding(Base):
                 import torch
                 if not DefaultEmbedding._model:
                     try:
-                        DefaultEmbedding._model = FlagModel(os.path.join(get_home_cache_dir(), re.sub(r"^[a-zA-Z]+/", "", model_name)),
-                                                            query_instruction_for_retrieval="为这个句子生成表示以用于检索相关文章：",
-                                                            use_fp16=torch.cuda.is_available())
+                        DefaultEmbedding._model = FlagModel(
+                            os.path.join(get_home_cache_dir(), re.sub(r"^[a-zA-Z]+/", "", model_name)),
+                            query_instruction_for_retrieval="为这个句子生成表示以用于检索相关文章：",
+                            use_fp16=torch.cuda.is_available())
                     except Exception as e:
                         model_dir = snapshot_download(repo_id="BAAI/bge-large-zh-v1.5",
-                                                      local_dir=os.path.join(get_home_cache_dir(), re.sub(r"^[a-zA-Z]+/", "", model_name)),
+                                                      local_dir=os.path.join(get_home_cache_dir(),
+                                                                             re.sub(r"^[a-zA-Z]+/", "", model_name)),
                                                       local_dir_use_symlinks=False)
                         DefaultEmbedding._model = FlagModel(model_dir,
                                                             query_instruction_for_retrieval="为这个句子生成表示以用于检索相关文章：",
@@ -177,7 +181,7 @@ class QWenEmbed(Base):
                 token_count += resp["usage"]["total_tokens"]
             return np.array(res), token_count
         except Exception as e:
-            raise Exception("Account abnormal. Please ensure it's on good standing to use QWen's "+self.model_name)
+            raise Exception("Account abnormal. Please ensure it's on good standing to use QWen's " + self.model_name)
         return np.array([]), 0
 
     def encode_queries(self, text):
@@ -190,7 +194,7 @@ class QWenEmbed(Base):
             return np.array(resp["output"]["embeddings"][0]
                             ["embedding"]), resp["usage"]["total_tokens"]
         except Exception as e:
-            raise Exception("Account abnormal. Please ensure it's on good standing to use QWen's "+self.model_name)
+            raise Exception("Account abnormal. Please ensure it's on good standing to use QWen's " + self.model_name)
         return np.array([]), 0
 
 
@@ -323,7 +327,6 @@ class YoudaoEmbed(Base):
 class JinaEmbed(Base):
     def __init__(self, key, model_name="jina-embeddings-v2-base-zh",
                  base_url="https://api.jina.ai/v1/embeddings"):
-
         self.base_url = "https://api.jina.ai/v1/embeddings"
         self.headers = {
             "Content-Type": "application/json",
@@ -353,14 +356,15 @@ class InfinityEmbed(Base):
             self,
             model_names: list[str] = ("BAAI/bge-small-en-v1.5",),
             engine_kwargs: dict = {},
-            key = None,
+            key=None,
     ):
 
         from infinity_emb import EngineArgs
         from infinity_emb.engine import AsyncEngineArray
 
         self._default_model = model_names[0]
-        self.engine_array = AsyncEngineArray.from_args([EngineArgs(model_name_or_path = model_name, **engine_kwargs) for model_name in model_names])
+        self.engine_array = AsyncEngineArray.from_args(
+            [EngineArgs(model_name_or_path=model_name, **engine_kwargs) for model_name in model_names])
 
     async def _embed(self, sentences: list[str], model_name: str = ""):
         if not model_name:
@@ -396,13 +400,13 @@ class MistralEmbed(Base):
     def encode(self, texts: list, batch_size=32):
         texts = [truncate(t, 8196) for t in texts]
         res = self.client.embeddings(input=texts,
-                                            model=self.model_name)
+                                     model=self.model_name)
         return np.array([d.embedding for d in res.data]
                         ), res.usage.total_tokens
 
     def encode_queries(self, text):
         res = self.client.embeddings(input=[truncate(text, 8196)],
-                                            model=self.model_name)
+                                     model=self.model_name)
         return np.array(res.data[0].embedding), res.usage.total_tokens
 
 
@@ -449,12 +453,13 @@ class BedrockEmbed(Base):
 
         return np.array(embeddings), token_count
 
+
 class GeminiEmbed(Base):
     def __init__(self, key, model_name='models/text-embedding-004',
                  **kwargs):
         genai.configure(api_key=key)
         self.model_name = 'models/' + model_name
-        
+
     def encode(self, texts: list, batch_size=32):
         texts = [truncate(t, 2048) for t in texts]
         token_count = sum(num_tokens_from_string(text) for text in texts)
@@ -463,20 +468,21 @@ class GeminiEmbed(Base):
             content=texts,
             task_type="retrieval_document",
             title="Embedding of list of strings")
-        return np.array(result['embedding']),token_count
-    
+        return np.array(result['embedding']), token_count
+
     def encode_queries(self, text):
         result = genai.embed_content(
             model=self.model_name,
-            content=truncate(text,2048),
+            content=truncate(text, 2048),
             task_type="retrieval_document",
             title="Embedding of single string")
         token_count = num_tokens_from_string(text)
-        return np.array(result['embedding']),token_count
+        return np.array(result['embedding']), token_count
+
 
 class NvidiaEmbed(Base):
     def __init__(
-        self, key, model_name, base_url="https://integrate.api.nvidia.com/v1/embeddings"
+            self, key, model_name, base_url="https://integrate.api.nvidia.com/v1/embeddings"
     ):
         if not base_url:
             base_url = "https://integrate.api.nvidia.com/v1/embeddings"
@@ -586,7 +592,7 @@ class UpstageEmbed(OpenAIEmbed):
 
 class SILICONFLOWEmbed(Base):
     def __init__(
-        self, key, model_name, base_url="https://api.siliconflow.cn/v1/embeddings"
+            self, key, model_name, base_url="https://api.siliconflow.cn/v1/embeddings"
     ):
         if not base_url:
             base_url = "https://api.siliconflow.cn/v1/embeddings"
@@ -678,7 +684,7 @@ class VoyageEmbed(Base):
         res = self.client.embed
         res = self.client.embed(
             texts=text, model=self.model_name, input_type="query"
-            )
+        )
         return np.array(res.embeddings), res.total_tokens
 
 
