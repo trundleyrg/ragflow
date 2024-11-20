@@ -30,6 +30,19 @@ class RAGFlowDocxParser:
     def __compose_table_content(self, df):
 
         def blockType(b):
+            """
+            标记文本类型
+            Dt: date
+            Nu: number
+            Ca: character
+            En: english
+            NE: number and character
+            Sg: single character
+            Tx: text block
+            Lx: long text block
+            Nr: ./rag/res/huqie.txt中定义的特殊名词
+            Ot: other text
+            """
             patt = [
                 ("^(20|19)[0-9]{2}[年/-][0-9]{1,2}[月/-][0-9]{1,2}日*$", "Dt"),
                 (r"^(20|19)[0-9]{2}年$", "Dt"),
