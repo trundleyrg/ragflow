@@ -6,9 +6,10 @@ import json
 from typing import Any, Dict, List, Optional
 from rag.nlp import find_codec
 
+
 class RAGFlowJsonParser:
     def __init__(
-        self, max_chunk_size: int = 2000, min_chunk_size: Optional[int] = None
+            self, max_chunk_size: int = 2000, min_chunk_size: Optional[int] = None
     ):
         super().__init__()
         self.max_chunk_size = max_chunk_size * 2
@@ -22,7 +23,7 @@ class RAGFlowJsonParser:
         encoding = find_codec(binary)
         txt = binary.decode(encoding, errors="ignore")
         json_data = json.loads(txt)
-        chunks = self.split_json(json_data, True)   
+        chunks = self.split_json(json_data, True)
         sections = [json.dumps(l, ensure_ascii=False) for l in chunks if l]
         return sections
 
@@ -51,7 +52,7 @@ class RAGFlowJsonParser:
         else:
             # Base case: the item is neither a dict nor a list, so return it unchanged
             return data
-        
+
     def _json_split(
         self,
         data: Dict[str, Any],
@@ -103,10 +104,10 @@ class RAGFlowJsonParser:
         return chunks
 
     def split_text(
-        self,
-        json_data: Dict[str, Any],
-        convert_lists: bool = False,
-        ensure_ascii: bool = True,
+            self,
+            json_data: Dict[str, Any],
+            convert_lists: bool = False,
+            ensure_ascii: bool = True,
     ) -> List[str]:
         """Splits JSON into a list of JSON formatted strings"""
 
@@ -114,3 +115,10 @@ class RAGFlowJsonParser:
 
         # Convert to string
         return [json.dumps(chunk, ensure_ascii=ensure_ascii) for chunk in chunks]
+
+
+if __name__ == '__main__':
+    psr = RAGFlowJsonParser(max_chunk_size=800)
+    with open(r"../test/test.json", "r") as f:
+        raw_json = json.load(f)
+        psr(raw_json)
