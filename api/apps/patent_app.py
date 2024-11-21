@@ -85,11 +85,16 @@ def completion():
     不支持workflow/agent跳转的对话
     :return:
     """
+    # import time
+    # start_time = time.time()
     # region 1. 权限检查
     if not check_authority(request.headers.get("Authorization").split()[1]):
         return get_json_result(
             data=False, message='Token is not valid!"', code=RetCode.AUTHENTICATION_ERROR)
     # endregion
+    # check_time = time.time()
+    # print("权限校验花费时长: ", check_time - start_time, "s")
+
     req = request.json
     e, msg, dia = get_conversation(req["conversation_id"], req["messages"])
     if not e:
@@ -99,6 +104,8 @@ def completion():
     req["messages"] = msg
     if not state:
         return get_data_error_result(message=relative_info)
+    # search_time = time.time()
+    # print("文档检索时长: ", search_time - check_time, "s")
 
     # region 重命名ans中的引用字段
     def rename_field(ans):
@@ -111,20 +118,22 @@ def completion():
                 chunk_i.pop('docnm_kwd')
     # endregion
 
-    def fillin_conv(ans, conv, message_id):
-        conv.reference[-1] = ans["reference"]
-        conv.message[-1] = {"role": "assistant", "content": ans["answer"], "id": message_id}
-        ans["id"] = message_id
-        return conv, message_id
+    # def fill_conv(ans, conv, message_id):
+    #     conv.reference[-1] = ans["reference"]
+    #     conv.message[-1] = {"role": "assistant", "content": ans["answer"], "id": message_id}
+    #     ans["id"] = message_id
+    #     return conv, message_id
 
     # region 非流式响应
     answer = None
     for ans in patent_chat(dia, relative_info=relative_info, **req):
         answer = ans
-        # conv, message_id = fillin_conv(ans, conv, message_id)
+        # conv, message_id = fill_conv(ans, conv, message_id)
         # API4ConversationService.append_message(conv.id, conv.to_dict())  # 数据入库
         break
 
     rename_field(answer)
     # endregion
+    # print("回答生成时长: ", time.time() - search_time, "s")
+    # print("共计执行时长: ", time.time() - start_time, "s")
     return get_json_result(data=answer)

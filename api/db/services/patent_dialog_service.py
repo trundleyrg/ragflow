@@ -43,13 +43,14 @@ def rewrite_query(dialog, query, target="涤纶补片"):
     :param target:
     :return:
     """
-    # query = "请参照涤纶补片的介绍方式，讲解什么是流通道单瓣补片"
-
+    start_time = time.time()
     # HyDE方案：LLM创建一个假设答案来响应查询。查询和生成答案都转换为embedding，在chunk中检索相似结果。
     system_prompt = (f"你是一个医疗产品注册助手，你需要根据用户的问题，给出一个合适的答案。"
                      f"当前问题的答案与注册产品{target}有关。"
                      f"回答使用的专业词汇应该准确无误。回答应该简要，字数限制在300字以内。")
     chat_mdl = LLMBundle(dialog.tenant_id, LLMType.CHAT, dialog.llm_id)
+    chat_time = time.time()
+    print("2.4.1.1 对话模型初始时长: ", chat_time - start_time, "s")
     gen_conf = {  # hyde 配置参数
         "temperature": 0.1,
         "top_p": 0.2,
@@ -58,7 +59,7 @@ def rewrite_query(dialog, query, target="涤纶补片"):
         "max_tokens": 512
     }
     hypo_answer = chat_mdl.chat(system_prompt, query, gen_conf)
-    print(query, hypo_answer)
+    print("2.4.1.2 生成假设答案时长: ", time.time() - chat_time, "s")
     return hypo_answer
 
 
@@ -66,6 +67,8 @@ def patent_search(dialog, messages, target="涤纶补片", augment=True):
     """
     检索各知识库中的相似数据
     """
+    # tims = dict()
+    # start_time = time.time()
     # region 检索知识库配置检查
     kbs = KnowledgebaseService.get_by_ids(dialog.kb_ids)
     embd_nms = list(set([kb.embd_id for kb in kbs]))  # 检查数据向量话一致性
@@ -75,6 +78,9 @@ def patent_search(dialog, messages, target="涤纶补片", augment=True):
         return False, {"answer": "**ERROR**: 当前不支持图数据库检索"}
     retr = retrievaler  # if not is_kg else kg_retrievaler  # 判断调用图数据检索工具还是知识检索工具
     # endregion
+    # check_time = time.time()
+    # tims["2.1 配置检查时长"] = check_time - start_time
+    # print("2.1 配置检查时长：", check_time - start_time, 's')
 
     # todo: 检索增强，调用LLM生成相似问句，扩大搜索范围
     questions = [m["content"] for m in messages if m["role"] == "user"][-3:]  # 最近三条用户问句
@@ -85,6 +91,9 @@ def patent_search(dialog, messages, target="涤纶补片", augment=True):
     if dialog.rerank_id:
         rerank_mdl = LLMBundle(dialog.tenant_id, LLMType.RERANK, dialog.rerank_id)  # BAAI/bge-reranker-v2-m3
     # endregion
+    # model_time = time.time()
+    # tims["2.2 模型初始化时长"] = model_time - check_time
+    # print("2.2 模型初始化时长：", model_time - check_time, 's')
 
     # region 检索与用户问题相关内容
     tenant_ids = list(set([kb.tenant_id for kb in kbs]))
@@ -98,8 +107,14 @@ def patent_search(dialog, messages, target="涤纶补片", augment=True):
                                      vector_similarity_weight=dialog.vector_similarity_weight,
                                      doc_ids=None,
                                      top=dialog.top_k, rerank_mdl=rerank_mdl)
+    # search_time = time.time()
+    # tims["2.3 检索时长"] = search_time - model_time
+    # print("2.3 检索时长", search_time - model_time, 's')
     if augment:
         hypo_answer = rewrite_query(dialog, [m for m in messages if m["role"] == "user"][-1:], target=target)
+        hypo_time = time.time()
+        # tims["2.4.1 生成增强问句"] = hypo_time - search_time
+        # print("2.4.1 生成增强问句：", hypo_time - search_time, 's')
         hypo_infos = retr.retrieval(str(hypo_answer),
                                     embd_mdl=embd_mdl,
                                     tenant_ids=tenant_ids,
@@ -113,7 +128,12 @@ def patent_search(dialog, messages, target="涤纶补片", augment=True):
                                     top=dialog.top_k,
                                     rerank_mdl=rerank_mdl)
         kb_infos = combine_infos(kb_infos, hypo_infos)
+        # tims["2.4.2 增强检索时长"] = time.time() - hypo_time
+        # print("2.4.2 增强检索时长：", time.time() - hypo_time, 's')
     # endregion
+    # tims["2.4 增强检索时长"] = time.time() - search_time
+    # print("2.4 增强检索时长:", time.time() - search_time, 's')
+    # return True, kb_infos, tims
     return True, kb_infos
 
 
@@ -126,6 +146,8 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
     :param kwargs:
     :return:
     """
+    # tims = dict()
+    # start_time = time.time()
     max_tokens = 32768  # 待参考ollama参数修改max_token
     chat_mdl = LLMBundle(dialog.tenant_id, LLMType.CHAT, dialog.llm_id)
     prompt_config = dialog.prompt_config
@@ -136,8 +158,6 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
     else:
         questions = questions[-1:]  # 处理当前问句
 
-    # todo: 增强检索，改写当前问句
-
     # region 检索与用户问题相关内容
     kb_infos = relative_info
     target_infos = [ck["content_with_weight"] for ck in kb_infos["chunks"] if target in ck["important_kwd"]]
@@ -145,6 +165,10 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
     chat_logger.info(
         "{}->{}".format(" ".join(questions), "\n->".join(target_infos)))
     # endregion
+
+    # config_time = time.time()
+    # tims["3.1 对话配置参数初始化时长"] = config_time - start_time
+    # print("3.1 对话配置参数初始化时长：", config_time - start_time, 's')
 
     # region 空回复处理
     if not target_infos:
@@ -174,6 +198,11 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
     if "max_tokens" in gen_conf:
         gen_conf["max_tokens"] = max_tokens - used_token_count
     # endregion
+    # print("prompt使用token长度", used_token_count)
+    # tims["prompt used tokens"] = used_token_count
+    # prompt_time = time.time()
+    # tims["3.2 prompt初始化时长"] = prompt_time - prompt_time
+    # print("3.2 prompt初始化时长：", prompt_time - prompt_time, 's')
 
     # region 生成对话
     def decorate_answer(answer, prompt):
@@ -221,8 +250,14 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
     #     yield decorate_answer(answer)
     # else:
     answer = chat_mdl.chat(prompt, msg[1:], gen_conf)
+    # chat_time = time.time()
+    # tims["3.3 对话生成时长"] = chat_time - prompt_time
+    # print("3.3 对话生成时长：", chat_time - prompt_time, 's')
     chat_logger.info("User: {}|Assistant: {}".format(
         msg[-1]["content"], answer))
-    res = decorate_answer(answer, prompt_config)
+    res = decorate_answer(answer, prompt)
+    # tims["3.4 标注引用时长"] = time.time() - chat_time
+    # print("3.4 标注引用时长：", time.time() - chat_time, 's')
+    # yield res, tims
     yield res
     # endregion
