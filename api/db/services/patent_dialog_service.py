@@ -1,21 +1,11 @@
-import binascii
-import os
-import json
 import re
-from copy import deepcopy
-from timeit import default_timer as timer
+import time
 
-from api.db import LLMType, ParserType, StatusEnum
-from api.db.db_models import Dialog, Conversation, DB
-from api.db.services.common_service import CommonService
-from api.db.services.dialog_service import use_sql, full_question, keyword_extraction, message_fit_in
+from api.db import LLMType, ParserType
+from api.db.services.dialog_service import full_question, message_fit_in
 from api.db.services.knowledgebase_service import KnowledgebaseService
-from api.db.services.llm_service import LLMService, TenantLLMService, LLMBundle
-from api.settings import chat_logger, retrievaler, kg_retrievaler
-from rag.app.resume import forbidden_select_fields4resume
-from rag.nlp.search import index_name
-from rag.utils import rmSpace, num_tokens_from_string, encoder
-from api.utils.file_utils import get_project_base_directory
+from api.db.services.llm_service import LLMBundle
+from api.settings import chat_logger, retrievaler
 
 
 def combine_infos(infos_a: dict, infos_b: dict) -> dict:
@@ -141,7 +131,7 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
     prompt_config = dialog.prompt_config
 
     questions = [m["content"] for m in messages if m["role"] == "user"][-3:]  # 最近三条用户问句
-    if len(questions) > 1 and prompt_config.get("refine_multiturn"):  # prompt将多段对话合并为一句
+    if kwargs.get("refine_multiturn"):  # prompt将多段对话合并为一句
         questions = [full_question(dialog.tenant_id, dialog.llm_id, messages)]
     else:
         questions = questions[-1:]  # 处理当前问句
@@ -186,16 +176,14 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
     # endregion
 
     # region 生成对话
-    def decorate_answer(answer, prompt_config):
-        nonlocal kwargs, kb_infos, prompt
+    def decorate_answer(answer, prompt):
+        nonlocal kwargs, kb_infos
         refs = []
         retr = retrievaler
         kbs = KnowledgebaseService.get_by_ids(dialog.kb_ids)
         embd_nms = list(set([kb.embd_id for kb in kbs]))
         embd_mdl = LLMBundle(dialog.tenant_id, LLMType.EMBEDDING, embd_nms[0])  # BAAI/bge-large-zh-v1.5
-        if prompt_config.get("quote", True):
-            # 依据对话设置来决定是否插入引用
-            # todo: 修改插入引用
+        if kwargs.get("quote", False):  # 依据对话设置来决定是否插入引用
             answer, idx = retr.insert_citations(answer,
                                                 [ck["content_ltks"]
                                                  for ck in kb_infos["chunks"]],

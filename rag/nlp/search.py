@@ -229,6 +229,7 @@ class Dealer:
 
         return res, seted
 
+
     def rerank(self, sres, query, tkweight=0.3, vtweight=0.7, cfield="content_ltks"):
         _, keywords = self.qryr.question(query)
         vector_size = len(sres.query_vector)
