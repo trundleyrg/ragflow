@@ -137,15 +137,16 @@ def patent_search(dialog, messages, target="涤纶补片", augment=True):
     return True, kb_infos
 
 
-def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
+def patent_chat(dialog, relative_info, **kwargs):
     """
 
     :param dialog: 依据dialog_id，获取对话使用的LLM配置参数。 测试参数：95798030489811ef82c20242ac130006
     :param messages:
-    :param stream:
     :param kwargs:
     :return:
     """
+    messages = kwargs["messages"]
+    target = kwargs.get("target")
     # tims = dict()
     # start_time = time.time()
     max_tokens = 32768  # 待参考ollama参数修改max_token
@@ -207,7 +208,6 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
     # region 生成对话
     def decorate_answer(answer, prompt):
         nonlocal kwargs, kb_infos
-        refs = []
         retr = retrievaler
         kbs = KnowledgebaseService.get_by_ids(dialog.kb_ids)
         embd_nms = list(set([kb.embd_id for kb in kbs]))
@@ -234,30 +234,30 @@ def patent_chat(dialog, target, messages, relative_info, stream, **kwargs):
 
         return {"answer": answer, "reference": kb_infos, "prompt": prompt}
 
-    # if stream:
-    #     last_ans = ""
-    #     answer = ""
-    #     for ans in chat_mdl.chat_streamly(prompt, msg[1:], gen_conf):
-    #         answer = ans
-    #         delta_ans = ans[len(last_ans):]
-    #         if num_tokens_from_string(delta_ans) < 16:
-    #             continue
-    #         last_ans = answer
-    #         yield {"answer": answer, "reference": {}, "audio_binary": tts(tts_mdl, delta_ans)}
-    #     delta_ans = answer[len(last_ans):]
-    #     if delta_ans:
-    #         yield {"answer": answer, "reference": {}, "audio_binary": tts(tts_mdl, delta_ans)}
-    #     yield decorate_answer(answer)
-    # else:
-    answer = chat_mdl.chat(prompt, msg[1:], gen_conf)
-    # chat_time = time.time()
-    # tims["3.3 对话生成时长"] = chat_time - prompt_time
-    # print("3.3 对话生成时长：", chat_time - prompt_time, 's')
-    chat_logger.info("User: {}|Assistant: {}".format(
-        msg[-1]["content"], answer))
-    res = decorate_answer(answer, prompt)
-    # tims["3.4 标注引用时长"] = time.time() - chat_time
-    # print("3.4 标注引用时长：", time.time() - chat_time, 's')
-    # yield res, tims
-    yield res
+    if kwargs["stream"]:
+        last_ans = ""
+        answer = ""
+        for ans in chat_mdl.chat_streamly(prompt, msg[1:], gen_conf):
+            answer = ans
+            # delta_ans = ans[len(last_ans):]
+            # if num_tokens_from_string(delta_ans) < 16:
+            #     continue
+            last_ans = answer
+            yield {"answer": answer, "reference": {}, "audio_binary": None}
+        delta_ans = answer[len(last_ans):]
+        if delta_ans:
+            yield {"answer": answer, "reference": {}, "audio_binary": None}
+        yield decorate_answer(answer, prompt)
+    else:
+        answer = chat_mdl.chat(prompt, msg[1:], gen_conf)
+        # chat_time = time.time()
+        # tims["3.3 对话生成时长"] = chat_time - prompt_time
+        # print("3.3 对话生成时长：", chat_time - prompt_time, 's')
+        chat_logger.info("User: {}|Assistant: {}".format(
+            msg[-1]["content"], answer))
+        res = decorate_answer(answer, prompt)
+        # tims["3.4 标注引用时长"] = time.time() - chat_time
+        # print("3.4 标注引用时长：", time.time() - chat_time, 's')
+        # yield res, tims
+        yield res
     # endregion

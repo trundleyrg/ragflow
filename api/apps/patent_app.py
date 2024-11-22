@@ -1,7 +1,8 @@
 """
 balance patent api
 """
-from flask import request
+import json
+from flask import request, Response
 
 from api.db.db_models import APIToken, Task, File
 from api.db.services.api_service import APITokenService, API4ConversationService
@@ -104,6 +105,7 @@ def completion():
     req["messages"] = msg
     if not state:
         return get_data_error_result(message=relative_info)
+
     # search_time = time.time()
     # print("文档检索时长: ", search_time - check_time, "s")
 
@@ -116,6 +118,7 @@ def completion():
             if 'docnm_kwd' in chunk_i:  # docnm_kwd: filename
                 chunk_i['doc_name'] = chunk_i['docnm_kwd']
                 chunk_i.pop('docnm_kwd')
+
     # endregion
 
     # def fill_conv(ans, conv, message_id):
@@ -123,6 +126,28 @@ def completion():
     #     conv.message[-1] = {"role": "assistant", "content": ans["answer"], "id": message_id}
     #     ans["id"] = message_id
     #     return conv, message_id
+
+    if req.get("stream", True):
+        def stream(dia, req):
+            try:
+                for ans in patent_chat(dia, relative_info, **req):
+                    # fillin_conv(ans)
+                    rename_field(ans)
+                    yield "data:" + json.dumps({"code": 0, "message": "", "data": ans},
+                                               ensure_ascii=False) + "\n\n"
+                # API4ConversationService.append_message(conv.id, conv.to_dict())
+            except Exception as e:
+                yield "data:" + json.dumps({"code": 500, "message": str(e),
+                                            "data": {"answer": "**ERROR**: " + str(e), "reference": []}},
+                                           ensure_ascii=False) + "\n\n"
+            yield "data:" + json.dumps({"code": 0, "message": "", "data": True}, ensure_ascii=False) + "\n\n"
+
+        resp = Response(stream(dia, req), mimetype="text/event-stream")
+        resp.headers.add_header("Cache-control", "no-cache")
+        resp.headers.add_header("Connection", "keep-alive")
+        resp.headers.add_header("X-Accel-Buffering", "no")
+        resp.headers.add_header("Content-Type", "text/event-stream; charset=utf-8")
+        return resp
 
     # region 非流式响应
     answer = None
