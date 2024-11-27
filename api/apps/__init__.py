@@ -13,15 +13,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-import logging
 import os
 import sys
+import logging
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from flask import Blueprint, Flask
 from werkzeug.wrappers.request import Request
 from flask_cors import CORS
 from flasgger import Swagger
+from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
 
 from api.db import StatusEnum
 from api.db.db_models import close_connection
@@ -30,17 +31,11 @@ from api.utils import CustomJSONEncoder, commands
 
 from flask_session import Session
 from flask_login import LoginManager
-from api.settings import SECRET_KEY, stat_logger
-from api.settings import API_VERSION, access_logger
+from api import settings
 from api.utils.api_utils import server_error_response
-from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
+from api.constants import API_VERSION
 
 __all__ = ["app"]
-
-
-logger = logging.getLogger("flask.app")
-for h in access_logger.handlers:
-    logger.addHandler(h)
 
 Request.json = property(lambda self: self.get_json(force=True, silent=True))
 
@@ -83,7 +78,6 @@ app.url_map.strict_slashes = False
 app.json_encoder = CustomJSONEncoder
 app.errorhandler(Exception)(server_error_response)
 
-
 ## convince for dev and debug
 # app.config["LOGIN_DISABLED"] = True
 app.config["SESSION_PERMANENT"] = False
@@ -115,7 +109,7 @@ def register_page(page_path):
 
     page_name = page_path.stem.rstrip("_app")
     module_name = ".".join(
-        page_path.parts[page_path.parts.index("api") : -1] + (page_name,)
+        page_path.parts[page_path.parts.index("api"): -1] + (page_name,)
     )
 
     spec = spec_from_file_location(module_name, page_path)
@@ -146,7 +140,7 @@ client_urls_prefix = [
 
 @login_manager.request_loader
 def load_user(web_request):
-    jwt = Serializer(secret_key=SECRET_KEY)
+    jwt = Serializer(secret_key=settings.SECRET_KEY)
     authorization = web_request.headers.get("Authorization")
     if authorization:
         try:
@@ -158,8 +152,8 @@ def load_user(web_request):
                 return user[0]
             else:
                 return None
-        except Exception as e:
-            stat_logger.exception(e)
+        except Exception:
+            logging.exception("load_user got exception")
             return None
     else:
         return None

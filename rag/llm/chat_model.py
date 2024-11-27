@@ -366,7 +366,7 @@ class OllamaChat(Base):
                 keep_alive=-1
             )
             ans = response["message"]["content"].strip()
-            return ans, response["eval_count"] + response.get("prompt_eval_count", 0)
+            return ans, response.get("eval_count", 0) + response.get("prompt_eval_count", 0)
         except Exception as e:
             return "**ERROR**: " + str(e), 0
 
@@ -1164,7 +1164,11 @@ class SparkChat(Base):
             "Spark-Pro-128K": "pro-128k",
             "Spark-4.0-Ultra": "4.0Ultra",
         }
-        model_version = model2version[model_name]
+        version2model = {v: k for k, v in model2version.items()}
+        assert model_name in model2version or model_name in version2model, f"The given model name is not supported yet. Support: {list(model2version.keys())}"
+        if model_name in model2version:
+            model_version = model2version[model_name]
+        else: model_version = model_name
         super().__init__(key, model_version, base_url)
 
 
@@ -1260,7 +1264,7 @@ class AnthropicChat(Base):
                 system=self.system,
                 stream=False,
                 **gen_conf,
-            ).json()
+            ).to_dict()
             ans = response["content"][0]["text"]
             if response["stop_reason"] == "max_tokens":
                 ans += (

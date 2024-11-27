@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import logging
 import inspect
 import os
 import sys
@@ -29,12 +30,11 @@ from peewee import (
     Field, Model, Metadata
 )
 from playhouse.pool import PooledMySQLDatabase, PooledPostgresqlDatabase
-from api.db import SerializedType, ParserType
-from api.settings import DATABASE, stat_logger, SECRET_KEY, DATABASE_TYPE
-from api.utils.log_utils import getLogger
-from api import utils
 
-LOGGER = getLogger()
+
+from api.db import SerializedType, ParserType
+from api import settings
+from api import utils
 
 
 def singleton(cls, *args, **kw):
@@ -65,7 +65,7 @@ class TextFieldType(Enum):
 
 
 class LongTextField(TextField):
-    field_type = TextFieldType[DATABASE_TYPE.upper()].value
+    field_type = TextFieldType[settings.DATABASE_TYPE.upper()].value
 
 
 class JSONField(LongTextField):
@@ -272,6 +272,7 @@ class JsonSerializedField(SerializedField):
         super(JsonSerializedField, self).__init__(serialized_type=SerializedType.JSON, object_hook=object_hook,
                                                   object_pairs_hook=object_pairs_hook, **kwargs)
 
+
 class PooledDatabase(Enum):
     MYSQL = PooledMySQLDatabase
     POSTGRES = PooledPostgresqlDatabase
@@ -285,10 +286,11 @@ class DatabaseMigrator(Enum):
 @singleton
 class BaseDataBase:
     def __init__(self):
-        database_config = DATABASE.copy()
+        database_config = settings.DATABASE.copy()
         db_name = database_config.pop("name")
-        self.database_connection = PooledDatabase[DATABASE_TYPE.upper()].value(db_name, **database_config)
-        stat_logger.info('init database on cluster mode successfully')
+        self.database_connection = PooledDatabase[settings.DATABASE_TYPE.upper()].value(db_name, **database_config)
+        logging.info('init database on cluster mode successfully')
+
 
 class PostgresDatabaseLock:
     def __init__(self, lock_name, timeout=10, db=None):
@@ -333,6 +335,7 @@ class PostgresDatabaseLock:
                 return func(*args, **kwargs)
 
         return magic
+
 
 class MysqlDatabaseLock:
     def __init__(self, lock_name, timeout=10, db=None):
@@ -388,7 +391,7 @@ class DatabaseLock(Enum):
 
 
 DB = BaseDataBase().database_connection
-DB.lock = DatabaseLock[DATABASE_TYPE.upper()].value
+DB.lock = DatabaseLock[settings.DATABASE_TYPE.upper()].value
 
 
 def close_connection():
@@ -396,7 +399,7 @@ def close_connection():
         if DB:
             DB.close_stale(age=30)
     except Exception as e:
-        LOGGER.exception(e)
+        logging.exception(e)
 
 
 class DataBaseModel(BaseModel):
@@ -412,15 +415,15 @@ def init_database_tables(alter_fields=[]):
     for name, obj in members:
         if obj != DataBaseModel and issubclass(obj, DataBaseModel):
             table_objs.append(obj)
-            LOGGER.info(f"start create table {obj.__name__}")
+            logging.debug(f"start create table {obj.__name__}")
             try:
                 obj.create_table()
-                LOGGER.info(f"create table success: {obj.__name__}")
+                logging.debug(f"create table success: {obj.__name__}")
             except Exception as e:
-                LOGGER.exception(e)
+                logging.exception(e)
                 create_failed_list.append(obj.__name__)
     if create_failed_list:
-        LOGGER.info(f"create tables failed: {create_failed_list}")
+        logging.error(f"create tables failed: {create_failed_list}")
         raise Exception(f"create tables failed: {create_failed_list}")
     migrate_db()
 
@@ -479,7 +482,7 @@ class User(DataBaseModel, UserMixin):
         return self.email
 
     def get_id(self):
-        jwt = Serializer(secret_key=SECRET_KEY)
+        jwt = Serializer(secret_key=settings.SECRET_KEY)
         return jwt.dumps(str(self.access_token))
 
     class Meta:
@@ -648,7 +651,7 @@ class TenantLLM(DataBaseModel):
         index=True)
     api_key = CharField(max_length=1024, null=True, help_text="API KEY", index=True)
     api_base = CharField(max_length=255, null=True, help_text="API Base")
-
+    max_tokens = IntegerField(default=8192, index=True)
     used_tokens = IntegerField(default=0, index=True)
 
     def __str__(self):
@@ -879,8 +882,10 @@ class Dialog(DataBaseModel):
         default="simple",
         help_text="simple|advanced",
         index=True)
-    prompt_config = JSONField(null=False, default={"system": "", "prologue": "Hi! I'm your assistant, what can I do for you?",
-                                                   "parameters": [], "empty_response": "Sorry! No relevant content was found in the knowledge base!"})
+    prompt_config = JSONField(null=False,
+                              default={"system": "", "prologue": "Hi! I'm your assistant, what can I do for you?",
+                                       "parameters": [],
+                                       "empty_response": "Sorry! No relevant content was found in the knowledge base!"})
 
     similarity_threshold = FloatField(default=0.2)
     vector_similarity_weight = FloatField(default=0.3)
@@ -894,7 +899,7 @@ class Dialog(DataBaseModel):
         null=False,
         default="1",
         help_text="it needs to insert reference index into answer or not")
-    
+
     rerank_id = CharField(
         max_length=128,
         null=False,
@@ -980,7 +985,7 @@ class CanvasTemplate(DataBaseModel):
 
 def migrate_db():
     with DB.transaction():
-        migrator = DatabaseMigrator[DATABASE_TYPE.upper()].value(DB)
+        migrator = DatabaseMigrator[settings.DATABASE_TYPE.upper()].value(DB)
         try:
             migrate(
                 migrator.add_column('file', 'source_type', CharField(max_length=128, null=False, default="",
@@ -1029,8 +1034,8 @@ def migrate_db():
             pass
         try:
             migrate(
-                migrator.add_column("tenant","tts_id",
-                    CharField(max_length=256,null=True,help_text="default tts model ID",index=True))
+                migrator.add_column("tenant", "tts_id",
+                                    CharField(max_length=256, null=True, help_text="default tts model ID", index=True))
             )
         except Exception:
             pass
@@ -1059,4 +1064,9 @@ def migrate_db():
             )
         except Exception:
             pass
-
+        try:
+            migrate(
+                migrator.add_column("tenant_llm","max_tokens",IntegerField(default=8192,index=True))
+            )
+        except Exception:
+            pass

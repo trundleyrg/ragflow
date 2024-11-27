@@ -5,7 +5,7 @@ slug: /http_api_reference
 
 # HTTP API Reference
 
-A complete reference for RAGFlow's RESTful API. Before proceeding, please ensure you [have your RAGFlow API key ready for authentication](../guides/develop/acquire_ragflow_api_key.md).
+A complete reference for RAGFlow's RESTful API. Before proceeding, please ensure you [have your RAGFlow API key ready for authentication](https://ragflow.io/docs/dev/acquire_ragflow_api_key).
 
 ---
 
@@ -77,7 +77,9 @@ curl --request POST \
   The name of the embedding model to use. For example: `"BAAI/bge-zh-v1.5"`
 
 - `"permission"`: (*Body parameter*), `string`  
-  Specifies who can access the dataset to create. You can set it only to `"me"` for now.
+  Specifies who can access the dataset to create. Available options:  
+  - `"me"`: (Default) Only you can manage the dataset.
+  - `"team"`: All team members can manage the dataset.
 
 - `"chunk_method"`: (*Body parameter*), `enum<string>`  
   The chunking method of the dataset to create. Available options:  
@@ -187,7 +189,9 @@ curl --request DELETE \
      --url http://{address}/api/v1/datasets \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer <YOUR_API_KEY>' \
-     --data '{"ids": ["test_1", "test_2"]}'
+     --data '{
+     "ids": ["test_1", "test_2"]
+     }'
 ```
 
 #### Request parameters
@@ -243,7 +247,7 @@ curl --request PUT \
      --header 'Authorization: Bearer <YOUR_API_KEY>' \
      --data '
      {
-          "name": "updated_dataset",
+          "name": "updated_dataset"
      }'
 ```
 
@@ -1152,7 +1156,7 @@ curl --request PUT \
      --data '
      {   
           "content": "ragflow123",  
-          "important_keywords": [],   
+          "important_keywords": []  
      }'
 ```
 
@@ -1379,7 +1383,7 @@ curl --request POST \
     The maximum length of the model’s output, measured in the number of tokens (words or pieces of words). Defaults to `512`.  
 - `"prompt"`: (*Body parameter*), `object`  
   Instructions for the LLM to follow. If it is not explicitly set, a JSON object with the following values will be generated as the default. A `prompt` JSON object contains the following attributes:  
-  - `"similarity_threshold"`: `float` RAGFlow uses a hybrid of weighted keyword similarity and vector cosine similarity during retrieval. This argument sets the threshold for similarities between the user query and chunks. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
+  - `"similarity_threshold"`: `float` RAGFlow employs either a combination of weighted keyword similarity and weighted vector cosine similarity, or a combination of weighted keyword similarity and weighted reranking score during retrieval. This argument sets the threshold for similarities between the user query and chunks. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
   - `"keywords_similarity_weight"`: `float` This argument sets the weight of keyword similarity in the hybrid similarity score with vector cosine similarity or reranking model similarity. By adjusting this weight, you can control the influence of keyword similarity in relation to other similarity measures. The default value is `0.7`.
   - `"top_n"`: `int` This argument specifies the number of top chunks with similarity scores above the `similarity_threshold` that are fed to the LLM. The LLM will *only* access these 'top N' chunks.  The default value is `8`.
   - `"variables"`: `object[]` This argument lists the variables to use in the 'System' field of **Chat Configurations**. Note that:  
@@ -1514,7 +1518,7 @@ curl --request PUT \
     The maximum length of the model’s output, measured in the number of tokens (words or pieces of words). Defaults to `512`.  
 - `"prompt"`: (*Body parameter*), `object`  
   Instructions for the LLM to follow.  A `prompt` object contains the following attributes:  
-  - `"similarity_threshold"`: `float` RAGFlow uses a hybrid of weighted keyword similarity and vector cosine similarity during retrieval. This argument sets the threshold for similarities between the user query and chunks. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
+  - `"similarity_threshold"`: `float` RAGFlow employs either a combination of weighted keyword similarity and weighted vector cosine similarity, or a combination of weighted keyword similarity and weighted rerank score during retrieval. This argument sets the threshold for similarities between the user query and chunks. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
   - `"keywords_similarity_weight"`: `float` This argument sets the weight of keyword similarity in the hybrid similarity score with vector cosine similarity or reranking model similarity. By adjusting this weight, you can control the influence of keyword similarity in relation to other similarity measures. The default value is `0.7`.
   - `"top_n"`: `int` This argument specifies the number of top chunks with similarity scores above the `similarity_threshold` that are fed to the LLM. The LLM will *only* access these 'top N' chunks.  The default value is `8`.
   - `"variables"`: `object[]` This argument lists the variables to use in the 'System' field of **Chat Configurations**. Note that:  
@@ -1702,11 +1706,11 @@ Failure:
 }
 ```
 
-## Create session
+## Create session with chat assistant
 
 **POST** `/api/v1/chats/{chat_id}/sessions`
 
-Creates a chat session.
+Creates a session with a chat assistant.
 
 ### Request
 
@@ -1778,7 +1782,7 @@ Failure:
 
 **PUT** `/api/v1/chats/{chat_id}/sessions/{session_id}`
 
-Updates a chat session.
+Updates a session of a specified chat assistant.
 
 ### Request
 
@@ -1915,7 +1919,7 @@ Failure:
 
 **DELETE** `/api/v1/chats/{chat_id}/sessions`
 
-Deletes sessions by ID.
+Deletes sessions of a chat assistant by ID.
 
 ### Request
 
@@ -1969,11 +1973,26 @@ Failure:
 
 ---
 
-## Converse
+## Converse with chat assistant
 
 **POST** `/api/v1/chats/{chat_id}/completions`
 
-Asks a question to start an AI-powered conversation.
+Asks a specified chat assistant a question to start an AI-powered conversation.
+
+:::tip NOTE
+
+- In streaming mode, not all responses include a reference, as this depends on the system's judgement.
+- In streaming mode, the last message is an empty message:
+
+  ```text
+  data:
+  {
+    "code": 0,
+    "data": true
+  }
+  ```
+
+:::
 
 ### Request
 
@@ -2005,12 +2024,12 @@ curl --request POST \
 
 - `chat_id`: (*Path parameter*)  
   The ID of the associated chat assistant.
-- `"question"`: (*Body Parameter*), `string` *Required*  
+- `"question"`: (*Body Parameter*), `string`, *Required*  
   The question to start an AI-powered conversation.
 - `"stream"`: (*Body Parameter*), `boolean`  
   Indicates whether to output responses in a streaming way:
-  - `true`: Enable streaming.
-  - `false`: Disable streaming (default).
+  - `true`: Enable streaming (default).
+  - `false`: Disable streaming.
 - `"session_id"`: (*Body Parameter*)  
   The ID of session. If it is not provided, a new session will be generated.
 
@@ -2018,7 +2037,7 @@ curl --request POST \
 
 Success:
 
-```text
+```json
 data:{
     "code": 0,
     "data": {
@@ -2099,11 +2118,13 @@ Failure:
 }
 ```
 
-## Create agent session
+---
+
+## Create session with an agent
 
 **POST** `/api/v1/agents/{agent_id}/sessions`
 
-Creates an agent session.
+Creates a session with an agent.
 
 ### Request
 
@@ -2127,7 +2148,7 @@ curl --request POST \
 
 #### Request parameters
 
-- `agent_id`: (*Path parameter*)
+- `agent_id`: (*Path parameter*)  
   The ID of the associated agent assistant.
 
 ### Response
@@ -2142,7 +2163,7 @@ Success:
         "id": "7869e9e49c1711ef92840242ac120006",
         "message": [
             {
-                "content": "Hello! I am the HR responsible for recruitment at Infineon. I learned that you are an expert in this field, and I took the liberty of reaching out to you. There is an opportunity I would like to share with you. RAGFlow is currently looking for a senior engineer for your position. I was wondering if you might be interested?",
+                "content": "Hello! I am a recruiter at InfiniFlow. I learned that you are an expert in the field, and took the liberty of reaching out to you. There is an opportunity I would like to share with you. RAGFlow is currently looking for a senior engineer for your position. I was wondering if you might be interested?",
                 "role": "assistant"
             }
         ],
@@ -2161,13 +2182,28 @@ Failure:
 }
 ```
 
+---
 
-
-## Converse through agent
+## Converse with agent
 
 **POST** `/api/v1/agents/{agent_id}/completions`  
-#######  
-Asks a question to start an AI-powered conversation.
+
+Asks a specified agent a question to start an AI-powered conversation.
+
+:::tip NOTE
+
+- In streaming mode, not all responses include a reference, as this depends on the system's judgement.
+- In streaming mode, the last message is an empty message:
+
+  ```text
+  data:
+  {
+    "code": 0,
+    "data": true
+  }
+  ```
+
+:::
 
 ### Request
 
@@ -2197,16 +2233,16 @@ curl --request POST \
 
 #### Request Parameters
 
-- `agent_id`: (*Path parameter*)  
+- `agent_id`: (*Path parameter*), `string`  
   The ID of the associated agent assistant.
-- `"question"`: (*Body Parameter*), `string` *Required*  
+- `"question"`: (*Body Parameter*), `string`, *Required*  
   The question to start an AI-powered conversation.
 - `"stream"`: (*Body Parameter*), `boolean`  
-  Indicates whether to output responses in a streaming way:
-  - `true`: Enable streaming.
-  - `false`: Disable streaming (default).
+  Indicates whether to output responses in a streaming way:  
+  - `true`: Enable streaming (default).
+  - `false`: Disable streaming.
 - `"session_id"`: (*Body Parameter*)  
-  The ID of session. If it is not provided, a new session will be generated.
+  The ID of the session. If it is not provided, a new session will be generated.
 
 ### Response
 
@@ -2225,7 +2261,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello",
         "reference": [],
@@ -2235,7 +2270,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello!",
         "reference": [],
@@ -2245,7 +2279,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello! How",
         "reference": [],
@@ -2255,7 +2288,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello! How can",
         "reference": [],
@@ -2265,7 +2297,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello! How can I",
         "reference": [],
@@ -2275,7 +2306,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello! How can I assist",
         "reference": [],
@@ -2285,7 +2315,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello! How can I assist you",
         "reference": [],
@@ -2295,7 +2324,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello! How can I assist you today",
         "reference": [],
@@ -2305,7 +2333,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello! How can I assist you today?",
         "reference": [],
@@ -2315,7 +2342,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": {
         "answer": "Hello! How can I assist you today?",
         "reference": [],
@@ -2325,7 +2351,6 @@ data:{
 }
 data:{
     "code": 0,
-    "message": "",
     "data": true
 }
 ```
@@ -2338,3 +2363,5 @@ Failure:
     "message": "`question` is required."
 }
 ```
+
+---

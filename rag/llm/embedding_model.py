@@ -13,8 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import logging
 import re
-from typing import Optional
 import threading
 import requests
 from huggingface_hub import snapshot_download
@@ -27,7 +27,7 @@ from openai import OpenAI
 import numpy as np
 import asyncio
 
-from api.settings import LIGHTEN
+from api import settings
 from api.utils.file_utils import get_home_cache_dir
 from rag.utils import num_tokens_from_string, truncate
 import google.generativeai as genai
@@ -61,20 +61,18 @@ class DefaultEmbedding(Base):
         ^_-
 
         """
-        if not LIGHTEN and not DefaultEmbedding._model:
+        if not settings.LIGHTEN and not DefaultEmbedding._model:
             with DefaultEmbedding._model_lock:
                 from FlagEmbedding import FlagModel
                 import torch
                 if not DefaultEmbedding._model:
                     try:
-                        DefaultEmbedding._model = FlagModel(
-                            os.path.join(get_home_cache_dir(), re.sub(r"^[a-zA-Z]+/", "", model_name)),
-                            query_instruction_for_retrieval="为这个句子生成表示以用于检索相关文章：",
-                            use_fp16=torch.cuda.is_available())
-                    except Exception as e:
+                        DefaultEmbedding._model = FlagModel(os.path.join(get_home_cache_dir(), re.sub(r"^[a-zA-Z0-9]+/", "", model_name)),
+                                                            query_instruction_for_retrieval="为这个句子生成表示以用于检索相关文章：",
+                                                            use_fp16=torch.cuda.is_available())
+                    except Exception:
                         model_dir = snapshot_download(repo_id="BAAI/bge-large-zh-v1.5",
-                                                      local_dir=os.path.join(get_home_cache_dir(),
-                                                                             re.sub(r"^[a-zA-Z]+/", "", model_name)),
+                                                      local_dir=os.path.join(get_home_cache_dir(), re.sub(r"^[a-zA-Z0-9]+/", "", model_name)),
                                                       local_dir_use_symlinks=False)
                         DefaultEmbedding._model = FlagModel(model_dir,
                                                             query_instruction_for_retrieval="为这个句子生成表示以用于检索相关文章：",
@@ -245,13 +243,13 @@ class FastEmbed(Base):
 
     def __init__(
             self,
-            key: Optional[str] = None,
+            key: str | None = None,
             model_name: str = "BAAI/bge-small-en-v1.5",
-            cache_dir: Optional[str] = None,
-            threads: Optional[int] = None,
+            cache_dir: str | None = None,
+            threads: int | None = None,
             **kwargs,
     ):
-        if not LIGHTEN and not FastEmbed._model:
+        if not settings.LIGHTEN and not FastEmbed._model:
             from fastembed import TextEmbedding
             self._model = TextEmbedding(model_name, cache_dir, threads, **kwargs)
 
@@ -297,14 +295,14 @@ class YoudaoEmbed(Base):
     _client = None
 
     def __init__(self, key=None, model_name="maidalun1020/bce-embedding-base_v1", **kwargs):
-        if not LIGHTEN and not YoudaoEmbed._client:
+        if not settings.LIGHTEN and not YoudaoEmbed._client:
             from BCEmbedding import EmbeddingModel as qanthing
             try:
-                print("LOADING BCE...")
+                logging.info("LOADING BCE...")
                 YoudaoEmbed._client = qanthing(model_name_or_path=os.path.join(
                     get_home_cache_dir(),
                     "bce-embedding-base_v1"))
-            except Exception as e:
+            except Exception:
                 YoudaoEmbed._client = qanthing(
                     model_name_or_path=model_name.replace(
                         "maidalun1020", "InfiniFlow"))
@@ -573,7 +571,7 @@ class TogetherAIEmbed(OllamaEmbed):
     def __init__(self, key, model_name, base_url="https://api.together.xyz/v1"):
         if not base_url:
             base_url = "https://api.together.xyz/v1"
-        super().__init__(key, model_name, base_url)
+        super().__init__(key, model_name, base_url=base_url)
 
 
 class PerfXCloudEmbed(OpenAIEmbed):

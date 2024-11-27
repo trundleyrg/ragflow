@@ -14,7 +14,7 @@
 - **docker-compose.yml**  
   Sets up environment for RAGFlow and its dependencies.
 - **docker-compose-base.yml**  
-  Sets up environment for RAGFlow's base services: Elasticsearch, MySQL, MinIO, and Redis.
+  Sets up environment for RAGFlow's dependencies: Elasticsearch, MySQL, MinIO, and Redis.
 
 ## 🐬 Docker environment variables
 
@@ -27,7 +27,7 @@ The [.env](./.env) file contains important environment variables for Docker.
 - `ES_PORT`  
   The port used to expose the Elasticsearch service to the host machine, allowing **external** access to the service running inside the Docker container.  Defaults to `1200`.
 - `ELASTIC_PASSWORD`  
-  The password for Elasticsearch. When updated, you must revise the `es.password` entry in [service_conf.yaml](./service_conf.yaml) accordingly.
+  The password for Elasticsearch. 
 
 ### Kibana
 
@@ -46,7 +46,7 @@ The [.env](./.env) file contains important environment variables for Docker.
 ### MySQL
 
 - `MYSQL_PASSWORD`  
-  The password for MySQL. When updated, you must revise the `mysql.password` entry in [service_conf.yaml](./service_conf.yaml) accordingly.
+  The password for MySQL. 
 - `MYSQL_PORT`  
   The port used to expose the MySQL service to the host machine, allowing **external** access to the MySQL database running inside the Docker container. Defaults to `5455`.
 
@@ -57,16 +57,16 @@ The [.env](./.env) file contains important environment variables for Docker.
 - `MINIO_PORT`  
   The port used to expose the MinIO API service to the host machine, allowing **external** access to the MinIO object storage service running inside the Docker container. Defaults to `9000`.
 - `MINIO_USER`  
-  The username for MinIO. When updated, you must revise the `minio.user` entry in [service_conf.yaml](./service_conf.yaml) accordingly.
+  The username for MinIO.
 - `MINIO_PASSWORD`  
-  The password for MinIO. When updated, you must revise the `minio.password` entry in [service_conf.yaml](./service_conf.yaml) accordingly.
+  The password for MinIO. 
 
 ### Redis
 
 - `REDIS_PORT`  
   The port used to expose the Redis service to the host machine, allowing **external** access to the Redis service running inside the Docker container. Defaults to `6379`.
 - `REDIS_PASSWORD`  
-  The password for Redis. When updated, you must revise the `redis.password` entry in [service_conf.yaml](./service_conf.yaml) accordingly.
+  The password for Redis.
 
 ### RAGFlow
 
@@ -77,7 +77,7 @@ The [.env](./.env) file contains important environment variables for Docker.
   
   - `infiniflow/ragflow:dev-slim` (default): The RAGFlow Docker image without embedding models.  
   - `infiniflow/ragflow:dev`: The RAGFlow Docker image with embedding models including:
-    - Embedded embedding models:
+    - Built-in embedding models:
       - `BAAI/bge-large-zh-v1.5` 
       - `BAAI/bge-reranker-v2-m3`
       - `maidalun1020/bce-embedding-base_v1`
@@ -102,18 +102,29 @@ The [.env](./.env) file contains important environment variables for Docker.
 >   - `RAGFLOW_IMAGE=swr.cn-north-4.myhuaweicloud.com/infiniflow/ragflow:dev` or,
 >   - `RAGFLOW_IMAGE=registry.cn-hangzhou.aliyuncs.com/infiniflow/ragflow:dev`.
 
-### Miscellaneous
+### Timezone
 
 - `TIMEZONE`  
   The local time zone. Defaults to `'Asia/Shanghai'`.
+
+### Hugging Face mirror site
+
 - `HF_ENDPOINT`  
   The mirror site for huggingface.co. It is disabled by default. You can uncomment this line if you have limited access to the primary Hugging Face domain.
-- `MACOS`  
+
+### MacOS
+
+- `MACOS`  
   Optimizations for MacOS. It is disabled by default. You can uncomment this line if your OS is MacOS.
+
+### Maximum file size
+
+- `MAX_CONTENT_LENGTH`  
+  The maximum file size for each uploaded file, in bytes. You can uncomment this line if you wish to change the 128M file size limit.
 
 ## 🐋 Service configuration
 
-[service_conf.yaml](./service_conf.yaml) specifies the system-level configuration for RAGFlow and is used by its API server and task executor.
+[service_conf.yaml](./service_conf.yaml) specifies the system-level configuration for RAGFlow and is used by its API server and task executor. In a dockerized setup, this file is automatically created based on the [service_conf.yaml.template](./service_conf.yaml.template) file (replacing all environment variables by their values).
 
 - `ragflow`
   - `host`: The API server's IP address inside the Docker container. Defaults to `0.0.0.0`.
@@ -133,11 +144,11 @@ The [.env](./.env) file contains important environment variables for Docker.
   - `host`: The MinIO serving IP *and* port inside the Docker container. Defaults to `minio:9000`.
 
 - `oauth`  
-  The OAuth configuration for signing up or signing in to RAGFlow using a third-party account.  It is disabled by default. To enable this feature, uncomment the corresponding lines in **service_conf.yaml**.
+  The OAuth configuration for signing up or signing in to RAGFlow using a third-party account.  It is disabled by default. To enable this feature, uncomment the corresponding lines in **service_conf.yaml.template**.
   - `github`: The GitHub authentication settings for your application. Visit the [Github Developer Settings page](https://github.com/settings/developers) to obtain your client_id and secret_key.
 
 - `user_default_llm`  
-  The default LLM to use for a new RAGFlow user. It is disabled by default. To enable this feature, uncomment the corresponding lines in **service_conf.yaml**.  
+  The default LLM to use for a new RAGFlow user. It is disabled by default. To enable this feature, uncomment the corresponding lines in **service_conf.yaml.template**.  
   - `factory`: The LLM supplier. Available options:
     - `"OpenAI"`
     - `"DeepSeek"`

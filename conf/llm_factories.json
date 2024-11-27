@@ -3,7 +3,7 @@
         {
             "name": "OpenAI",
             "logo": "",
-            "tags": "LLM,TEXT EMBEDDING,SPEECH2TEXT,MODERATION",
+            "tags": "LLM,TEXT EMBEDDING,TTS,TEXT RE-RANK,SPEECH2TEXT,MODERATION",
             "status": "1",
             "llm": [
                 {
@@ -89,7 +89,7 @@
         {
             "name": "Tongyi-Qianwen",
             "logo": "",
-            "tags": "LLM,TEXT EMBEDDING,TEXT RE-RANK,SPEECH2TEXT,MODERATION",
+            "tags": "LLM,TEXT EMBEDDING,TEXT RE-RANK,TTS,SPEECH2TEXT,MODERATION",
             "status": "1",
             "llm": [
                 {
@@ -352,7 +352,7 @@
         {
             "name": "Xinference",
             "logo": "",
-            "tags": "LLM,TEXT EMBEDDING,SPEECH2TEXT,MODERATION,TEXT RE-RANK",
+            "tags": "LLM,TEXT EMBEDDING,TTS,SPEECH2TEXT,MODERATION,TEXT RE-RANK",
             "status": "1",
             "llm": []
         },
@@ -2303,7 +2303,7 @@
         {
             "name": "XunFei Spark",
             "logo": "",
-            "tags": "LLM",
+            "tags": "LLM,TTS",
             "status": "1",
             "llm": []
         },
@@ -2341,6 +2341,12 @@
                     "model_type": "chat"
                 },
                 {
+                    "llm_name": "claude-3-5-sonnet-20241022",
+                    "tags": "LLM,CHAT,200k",
+                    "max_tokens": 204800,
+                    "model_type": "chat"
+                },
+                {
                     "llm_name": "claude-3-opus-20240229",
                     "tags": "LLM,CHAT,200k",
                     "max_tokens": 204800,
@@ -2371,8 +2377,8 @@
                     "model_type": "chat"
                 },
                 {
-                    "llm_name": "claude-instant-1.2",
-                    "tags": "LLM,CHAT,100k",
+                    "llm_name": "claude-3-5-sonnet-20241022",
+                    "tags": "LLM,CHAT,200k",
                     "max_tokens": 102400,
                     "model_type": "chat"
                 }

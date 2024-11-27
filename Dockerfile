@@ -1,8 +1,8 @@
 # base stage
-FROM ubuntu:24.04 AS base
+FROM ubuntu:22.04 AS base
 USER root
+SHELL ["/bin/bash", "-c"]
 
-ARG ARCH=amd64
 ENV LIGHTEN=0
 
 WORKDIR /ragflow
@@ -13,22 +13,13 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean \
 RUN --mount=type=cache,id=ragflow_base_apt,target=/var/cache/apt,sharing=locked \
     apt update && apt-get --no-install-recommends install -y ca-certificates
 
-# If you download Python modules too slow, you can use a pip mirror site to speed up apt and poetry
-RUN sed -i 's|http://archive.ubuntu.com|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/ubuntu.sources
+# Setup apt mirror site
+RUN sed -i 's|http://archive.ubuntu.com|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list
 
 RUN --mount=type=cache,id=ragflow_base_apt,target=/var/cache/apt,sharing=locked \
-    apt update && apt install -y curl libpython3-dev nginx libglib2.0-0 libglx-mesa0 pkg-config libicu-dev libgdiplus default-jdk python3-pip pipx \
-    libasound2t64 libatk-bridge2.0-0 libgtk-4-1 libnss3 xdg-utils unzip libgbm-dev wget \
-    && rm -rf /var/lib/apt/lists/* && \
-    wget -q -O chrome-linux64.zip https://bit.ly/chrome-linux64-121-0-6167-85 && \
-    unzip chrome-linux64.zip && \
-    rm chrome-linux64.zip && \
-    mv chrome-linux64 /opt/chrome/ && \
-    ln -s /opt/chrome/chrome /usr/local/bin/ && \
-    wget -q -O chromedriver-linux64.zip https://bit.ly/chromedriver-linux64-121-0-6167-85 && \
-    unzip -j chromedriver-linux64.zip chromedriver-linux64/chromedriver && \
-    rm chromedriver-linux64.zip && \
-    mv chromedriver /usr/local/bin/ && rm -f /usr/bin/google-chrome
+    apt update && DEBIAN_FRONTEND=noninteractive apt install -y curl libpython3-dev nginx libglib2.0-0 libglx-mesa0 pkg-config libicu-dev libgdiplus default-jdk python3-pip pipx \
+    libatk-bridge2.0-0 libgtk-4-1 libnss3 xdg-utils unzip libgbm-dev wget git \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && pip3 config set global.trusted-host "pypi.tuna.tsinghua.edu.cn mirrors.pku.edu.cn" && pip3 config set global.extra-index-url "https://mirrors.pku.edu.cn/pypi/web/simple" \
     && pipx install poetry \
@@ -37,8 +28,11 @@ RUN pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple &&
 # https://forum.aspose.com/t/aspose-slides-for-net-no-usable-version-of-libssl-found-with-linux-server/271344/13
 # aspose-slides on linux/arm64 is unavailable
 RUN --mount=type=bind,source=libssl1.1_1.1.1f-1ubuntu2_amd64.deb,target=/root/libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
-    if [ "${ARCH}" = "amd64" ]; then \
+    --mount=type=bind,source=libssl1.1_1.1.1f-1ubuntu2_arm64.deb,target=/root/libssl1.1_1.1.1f-1ubuntu2_arm64.deb \
+    if [ "$(uname -m)" = "x86_64" ]; then \
         dpkg -i /root/libssl1.1_1.1.1f-1ubuntu2_amd64.deb; \
+    elif [ "$(uname -m)" = "aarch64" ]; then \
+        dpkg -i /root/libssl1.1_1.1.1f-1ubuntu2_arm64.deb; \
     fi
 
 ENV PYTHONDONTWRITEBYTECODE=1 DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
@@ -50,29 +44,53 @@ ENV POETRY_VIRTUALENVS_CREATE=true
 ENV POETRY_REQUESTS_TIMEOUT=15
 ENV POETRY_PYPI_MIRROR_URL=https://pypi.tuna.tsinghua.edu.cn/simple/
 
+# nodejs 12.22 on Ubuntu 22.04 is too old
+RUN --mount=type=cache,id=ragflow_base_apt,target=/var/cache/apt,sharing=locked \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt purge -y nodejs npm && \
+    apt autoremove && \
+    apt update && \
+    apt install -y nodejs cargo && \
+    rm -rf /var/lib/apt/lists/*
+
 # builder stage
 FROM base AS builder
 USER root
 
 WORKDIR /ragflow
 
-RUN --mount=type=cache,id=ragflow_builder_apt,target=/var/cache/apt,sharing=locked \
-    apt update && apt install -y nodejs npm cargo && \
-    rm -rf /var/lib/apt/lists/*
+COPY .git /ragflow/.git
+
+RUN current_commit=$(git rev-parse --short HEAD); \
+    last_tag=$(git describe --tags --abbrev=0); \
+    commit_count=$(git rev-list --count "$last_tag..HEAD"); \
+    version_info=""; \
+    if [ "$commit_count" -eq 0 ]; then \
+        version_info=$last_tag; \
+    else \
+        version_info="$current_commit($last_tag~$commit_count)"; \
+    fi; \
+    if [ "$LIGHTEN" == "1" ]; then \
+        version_info="$version_info slim"; \
+    else \
+        version_info="$version_info full"; \
+    fi; \
+    echo "RAGFlow version: $version_info"; \
+    echo $version_info > /ragflow/VERSION
 
 COPY web web
 COPY docs docs
 RUN --mount=type=cache,id=ragflow_builder_npm,target=/root/.npm,sharing=locked \
-    cd web && npm i --force && npm run build
+    cd web && npm install --force && npm run build
 
 # install dependencies from poetry.lock file
 COPY pyproject.toml poetry.toml poetry.lock ./
 
 RUN --mount=type=cache,id=ragflow_builder_poetry,target=/root/.cache/pypoetry,sharing=locked \
-    if [ "$LIGHTEN" -eq 0 ]; then \
-        poetry install --no-root --with=full; \
-    else \
+    if [ "$LIGHTEN" == "1" ]; then \
         poetry install --no-root; \
+    else \
+        poetry install --no-root --with=full; \
     fi
 
 # production stage
@@ -80,6 +98,8 @@ FROM base AS production
 USER root
 
 WORKDIR /ragflow
+
+COPY --from=builder /ragflow/VERSION /ragflow/VERSION
 
 # Install python packages' dependencies
 # cv2 requires libGL.so.1
@@ -116,8 +136,22 @@ COPY nltk_data /root/nltk_data
 
 # https://github.com/chrismattmann/tika-python
 # This is the only way to run python-tika without internet access. Without this set, the default is to check the tika version and pull latest every time from Apache.
-COPY tika-server-standard-3.0.0.jar tika-server-standard-3.0.0.jar.md5 ./
+COPY tika-server-standard-3.0.0.jar /ragflow/tika-server-standard.jar
+COPY tika-server-standard-3.0.0.jar.md5 /ragflow/tika-server-standard.jar.md5
 ENV TIKA_SERVER_JAR="file:///ragflow/tika-server-standard.jar"
+
+# Copy cl100k_base
+COPY cl100k_base.tiktoken /ragflow/9b5ad71b2ce5302211f9c61530b329a4922fc6a4
+
+# Add dependencies of selenium
+RUN --mount=type=bind,source=chrome-linux64-121-0-6167-85,target=/chrome-linux64.zip \
+    unzip /chrome-linux64.zip && \
+    mv chrome-linux64 /opt/chrome && \
+    ln -s /opt/chrome/chrome /usr/local/bin/
+RUN --mount=type=bind,source=chromedriver-linux64-121-0-6167-85,target=/chromedriver-linux64.zip \
+    unzip -j /chromedriver-linux64.zip chromedriver-linux64/chromedriver && \
+    mv chromedriver /usr/local/bin/ && \
+    rm -f /usr/bin/google-chrome
 
 # Copy compiled web pages
 COPY --from=builder /ragflow/web/dist /ragflow/web/dist
@@ -129,6 +163,7 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 ENV PYTHONPATH=/ragflow/
 
+COPY docker/service_conf.yaml.template ./conf/service_conf.yaml.template
 COPY docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 

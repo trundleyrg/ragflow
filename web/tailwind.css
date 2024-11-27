@@ -37,6 +37,15 @@
 
     --background-inverse-standard: rgba(58, 56, 65, 0.15);
     --background-inverse-standard-foreground: rgb(92, 81, 81);
+
+    --button-blue-text: rgb(22, 119, 255);
+
+    --colors-outline-sentiment-primary: rgba(127, 105, 255, 1);
+    --colors-outline-neutral-strong: rgba(112, 107, 107, 0.15);
+
+    --colors-text-core-standard: rgba(127, 105, 255, 1);
+    --colors-text-neutral-strong: rgb(130, 121, 121);
+    --colors-text-neutral-standard: rgba(230, 227, 246, 1);
   }
 
   .dark {
@@ -82,6 +91,37 @@
 
     --background-inverse-strong: rgba(255, 255, 255, 0.15);
     --background-inverse-strong-foreground: rgba(255, 255, 255, 1);
+
+    --background-core-weak: rgb(101, 75, 248);
+    --background-core-weak-foreground: rgba(255, 255, 255, 1);
+
+    --colors-background-core-standard: rgba(137, 126, 255, 1);
+    --colors-background-core-strong: rgba(152, 147, 255, 1);
+    --colors-background-core-weak: rgba(101, 75, 248, 1);
+    --colors-background-functional-solid-danger: rgba(255, 57, 92, 1);
+    --colors-background-functional-solid-notice: rgba(255, 208, 94, 1);
+    --colors-background-functional-solid-positive: rgba(74, 225, 145, 1);
+    --colors-background-functional-transparent-danger: rgba(234, 50, 83, 0.2);
+    --colors-background-functional-transparent-notice: rgba(248, 208, 111, 0.5);
+    --colors-background-functional-transparent-positive: rgba(
+      65,
+      203,
+      130,
+      0.5
+    );
+    --colors-background-inverse-standard: rgba(230, 227, 246, 0.15);
+    --colors-background-inverse-strong: rgba(255, 255, 255, 0.15);
+    --colors-background-inverse-weak: rgba(184, 181, 203, 0.15);
+    --colors-background-neutral-standard: rgba(11, 10, 18, 1);
+    --colors-background-neutral-strong: rgba(29, 26, 44, 1);
+    --colors-background-neutral-weak: rgba(17, 16, 23, 1);
+
+    --colors-outline-sentiment-primary: rgba(146, 118, 255, 1);
+    --colors-outline-neutral-strong: rgba(255, 255, 255, 0.15);
+
+    --colors-text-core-standard: rgba(137, 126, 255, 1);
+    --colors-text-neutral-strong: rgba(255, 255, 255, 1);
+    --colors-text-neutral-standard: rgba(230, 227, 246, 1);
   }
 }
 

@@ -19,7 +19,7 @@ import pandas as pd
 from api.db import LLMType
 from api.db.services.dialog_service import message_fit_in
 from api.db.services.llm_service import LLMBundle
-from api.settings import retrievaler
+from api import settings
 from agent.component.base import ComponentBase, ComponentParamBase
 
 
@@ -63,18 +63,22 @@ class Generate(ComponentBase):
     component_name = "Generate"
 
     def get_dependent_components(self):
-        cpnts = [para["component_id"] for para in self._param.parameters]
-        return cpnts
+        cpnts = set([para["component_id"].split("@")[0] for para in self._param.parameters \
+                     if para.get("component_id") \
+                     and para["component_id"].lower().find("answer") < 0 \
+                     and para["component_id"].lower().find("begin") < 0])
+        return list(cpnts)
 
     def set_cite(self, retrieval_res, answer):
         retrieval_res = retrieval_res.dropna(subset=["vector", "content_ltks"]).reset_index(drop=True)
         if "empty_response" in retrieval_res.columns:
             retrieval_res["empty_response"].fillna("", inplace=True)
-        answer, idx = retrievaler.insert_citations(answer, [ck["content_ltks"] for _, ck in retrieval_res.iterrows()],
-                                                   [ck["vector"] for _, ck in retrieval_res.iterrows()],
-                                                   LLMBundle(self._canvas.get_tenant_id(), LLMType.EMBEDDING,
-                                                             self._canvas.get_embedding_model()), tkweight=0.7,
-                                                   vtweight=0.3)
+        answer, idx = settings.retrievaler.insert_citations(answer,
+                                                            [ck["content_ltks"] for _, ck in retrieval_res.iterrows()],
+                                                            [ck["vector"] for _, ck in retrieval_res.iterrows()],
+                                                            LLMBundle(self._canvas.get_tenant_id(), LLMType.EMBEDDING,
+                                                                      self._canvas.get_embedding_model()), tkweight=0.7,
+                                                            vtweight=0.3)
         doc_ids = set([])
         recall_docs = []
         for i in idx:
@@ -104,13 +108,32 @@ class Generate(ComponentBase):
         retrieval_res = []
         self._param.inputs = []
         for para in self._param.parameters:
-            cpn = self._canvas.get_component(para["component_id"])["obj"]
+            if not para.get("component_id"): continue
+            component_id = para["component_id"].split("@")[0]
+            if para["component_id"].lower().find("@") >= 0:
+                cpn_id, key = para["component_id"].split("@")
+                for p in self._canvas.get_component(cpn_id)["obj"]._param.query:
+                    if p["key"] == key:
+                        kwargs[para["key"]] = p.get("value", "")
+                        self._param.inputs.append(
+                            {"component_id": para["component_id"], "content": kwargs[para["key"]]})
+                        break
+                else:
+                    assert False, f"Can't find parameter '{key}' for {cpn_id}"
+                continue
+
+            cpn = self._canvas.get_component(component_id)["obj"]
             if cpn.component_name.lower() == "answer":
-                kwargs[para["key"]] = self._canvas.get_history(1)[0]["content"]
+                hist = self._canvas.get_history(1)
+                if hist:
+                    hist = hist[0]["content"]
+                else:
+                    hist = ""
+                kwargs[para["key"]] = hist
                 continue
             _, out = cpn.output(allow_partial=False)
             if "content" not in out.columns:
-                kwargs[para["key"]] = "Nothing"
+                kwargs[para["key"]] = ""
             else:
                 if cpn.component_name.lower() == "retrieval":
                     retrieval_res.append(out)
@@ -122,7 +145,7 @@ class Generate(ComponentBase):
         else: retrieval_res = pd.DataFrame([])
 
         for n, v in kwargs.items():
-            prompt = re.sub(r"\{%s\}" % re.escape(n), re.escape(str(v)), prompt)
+            prompt = re.sub(r"\{%s\}" % re.escape(n), str(v).replace("\\", " "), prompt)
 
         if not self._param.inputs and prompt.find("{input}") >= 0:
             retrieval_res = self.get_input()
@@ -141,6 +164,7 @@ class Generate(ComponentBase):
             return pd.DataFrame([res])
 
         msg = self._canvas.get_history(self._param.message_history_window_size)
+        if len(msg) < 1: msg.append({"role": "user", "content": ""})
         _, msg = message_fit_in([{"role": "system", "content": prompt}, *msg], int(chat_mdl.max_length * 0.97))
         if len(msg) < 2: msg.append({"role": "user", "content": ""})
         ans = chat_mdl.chat(msg[0]["content"], msg[1:], self._param.gen_conf())
@@ -161,6 +185,7 @@ class Generate(ComponentBase):
             return
 
         msg = self._canvas.get_history(self._param.message_history_window_size)
+        if len(msg) < 1: msg.append({"role": "user", "content": ""})
         _, msg = message_fit_in([{"role": "system", "content": prompt}, *msg], int(chat_mdl.max_length * 0.97))
         if len(msg) < 2: msg.append({"role": "user", "content": ""})
         answer = ""

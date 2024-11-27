@@ -14,7 +14,7 @@
 #  limitations under the License.
 #
 from flask import request
-from api.settings import RetCode
+from api import settings
 from api.db import StatusEnum
 from api.db.services.dialog_service import DialogService
 from api.db.services.knowledgebase_service import KnowledgebaseService
@@ -44,7 +44,7 @@ def create(tenant_id):
     kbs = KnowledgebaseService.get_by_ids(ids)
     embd_count = list(set([kb.embd_id for kb in kbs]))
     if len(embd_count) != 1:
-        return get_result(message='Datasets use different embedding models."',code=RetCode.AUTHENTICATION_ERROR)
+        return get_result(message='Datasets use different embedding models."',code=settings.RetCode.AUTHENTICATION_ERROR)
     req["kb_ids"] = ids
     # llm
     llm = req.get("llm")
@@ -111,7 +111,7 @@ def create(tenant_id):
         req['prompt_config'] = {}
     for key in key_list_2:
         temp = req['prompt_config'].get(key)
-        if not temp:
+        if (not temp and key == 'system') or (key not in req["prompt_config"]):
             req['prompt_config'][key] = default_prompt[key]
     for p in req['prompt_config']["parameters"]:
         if p["optional"]:
@@ -173,7 +173,7 @@ def update(tenant_id,chat_id):
             if len(embd_count) != 1 :
                 return get_result(
                     message='Datasets use different embedding models."',
-                    code=RetCode.AUTHENTICATION_ERROR)
+                    code=settings.RetCode.AUTHENTICATION_ERROR)
             req["kb_ids"] = ids
     llm = req.get("llm")
     if llm:

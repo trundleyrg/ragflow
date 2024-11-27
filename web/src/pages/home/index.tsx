@@ -1,12 +1,16 @@
-import { CardWithForm } from './card';
+import { Applications } from './applications';
+import { Banner } from './banner';
+import { Datasets } from './datasets';
 import { HomeHeader } from './header';
 
 const Home = () => {
   return (
-    <div>
+    <div className="text-white mx-8">
       <HomeHeader></HomeHeader>
       <section>
-        <CardWithForm></CardWithForm>
+        <Banner></Banner>
+        <Datasets></Datasets>
+        <Applications></Applications>
       </section>
     </div>
   );

@@ -39,6 +39,7 @@ import OperatorIcon from '../operator-icon';
 
 import { CloseOutlined } from '@ant-design/icons';
 import { lowerFirst } from 'lodash';
+import TemplateForm from '../form/template-form';
 import { getDrawerWidth } from '../utils';
 import styles from './index.less';
 
@@ -79,11 +80,12 @@ const FormMap = {
   [Operator.Invoke]: InvokeForm,
   [Operator.Concentrator]: () => <></>,
   [Operator.Note]: () => <></>,
+  [Operator.Template]: TemplateForm,
 };
 
 const EmptyContent = () => <div></div>;
 
-const FlowDrawer = ({
+const FormDrawer = ({
   visible,
   hideModal,
   node,
@@ -152,4 +154,4 @@ const FlowDrawer = ({
   );
 };
 
-export default FlowDrawer;
+export default FormDrawer;

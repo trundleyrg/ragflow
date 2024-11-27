@@ -32,6 +32,7 @@ export default {
       s: '秒',
       pleaseSelect: '請選擇',
       pleaseInput: '請輸入',
+      submit: '提交',
     },
     login: {
       login: '登入',
@@ -363,8 +364,8 @@ export default {
       topPMessage: 'Top P 是必填項',
       topPTip:
         '該參數也稱為“核心採樣”，它設置一個閾值來選擇較小的單詞集進行採樣。它專注於最可能的單詞，剔除不太可能的單詞。',
-      presencePenalty: '出席處罰',
-      presencePenaltyMessage: '出席處罰是必填項',
+      presencePenalty: '存在處罰',
+      presencePenaltyMessage: '存在處罰是必填項',
       presencePenaltyTip:
         '這會通過懲罰對話中已經出現的單詞來阻止模型重複相同的信息。',
       frequencyPenalty: '頻率懲罰',
@@ -375,6 +376,8 @@ export default {
       maxTokensMessage: '最大token數是必填項',
       maxTokensTip:
         '這設置了模型輸出的最大長度，以標記（單詞或單詞片段）的數量來衡量。',
+      maxTokensInvalidMessage: '請輸入有效的最大標記數。',
+      maxTokensMinMessage: '最大標記數不能小於 0。',
       quote: '顯示引文',
       quoteTip: '是否應該顯示原文出處？',
       selfRag: 'Self-RAG',
@@ -421,6 +424,12 @@ export default {
     setting: {
       profile: '概述',
       profileDescription: '在此更新您的照片和個人詳細信息。',
+      maxTokens: '最大token數',
+      maxTokensMessage: '最大token數是必填項',
+      maxTokensTip:
+        '這設置了模型輸出的最大長度，以標記（單詞或單詞片段）的數量來衡量。',
+      maxTokensInvalidMessage: '請輸入有效的最大標記數。',
+      maxTokensMinMessage: '最大標記數不能小於 0。',
       password: '密碼',
       passwordDescription: '請輸入您當前的密碼以更改您的密碼。',
       model: '模型提供商',
@@ -556,6 +565,7 @@ export default {
       refuse: '拒絕',
       teamMembers: '團隊成員',
       joinedTeams: '加入的團隊',
+      sureDelete: '您確定刪除該成員嗎？',
     },
     message: {
       registered: '註冊成功',
@@ -703,7 +713,7 @@ export default {
       bingDescription:
         '此元件用於從 https://www.bing.com/ 取得搜尋結果。通常，它充當知識庫的補充。 Top N 和 Bing Subscription-Key 指定您需要適配的搜尋結果數量。',
       apiKey: 'API KEY',
-      country: '國家',
+      country: '國家和地區',
       language: '語言',
       googleScholar: '谷歌學術',
       googleScholarDescription: `該元件用於從 https://scholar.google.com/ 取得搜尋結果。通常，它充當知識庫的補充。 Top N 指定您需要調整的搜尋結果的數量。`,
@@ -985,6 +995,11 @@ export default {
       content: '內容',
       operationResults: '運行結果',
       autosaved: '已自動儲存',
+      optional: '可選項',
+      pasteFileLink: '貼上文件連結',
+      testRun: '試運行',
+      template: '模板轉換',
+      templateDescription: '此元件用於排版各種元件的輸出。 ',
     },
     footer: {
       profile: '“保留所有權利 @ react”',

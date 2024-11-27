@@ -14,9 +14,9 @@
 #  limitations under the License.
 #
 
+import logging
 import json
 import re
-import logging
 from rag.utils.doc_store_conn import MatchTextExpr
 
 from rag.nlp import rag_tokenizer, term_weight, synonym
@@ -66,7 +66,7 @@ class FulltextQueryer:
 
     def question(self, txt, tbl="qa", min_match:float=0.6):
         txt = re.sub(
-            r"[ :\r\n\t,，。？?/`!！&\^%%]+",
+            r"[ :\r\n\t,，。？?/`!！&\^%%()^\[\]]+",
             " ",
             rag_tokenizer.tradi2simp(rag_tokenizer.strQ2B(txt.lower())),
         ).strip()
@@ -75,11 +75,20 @@ class FulltextQueryer:
         if not self.isChinese(txt):
             txt = FulltextQueryer.rmWWW(txt)
             tks = rag_tokenizer.tokenize(txt).split(" ")
-            tks_w = self.tw.weights(tks)
+            keywords = [t for t in tks if t]
+            tks_w = self.tw.weights(tks, preprocess=False)
             tks_w = [(re.sub(r"[ \\\"'^]", "", tk), w) for tk, w in tks_w]
             tks_w = [(re.sub(r"^[a-z0-9]$", "", tk), w) for tk, w in tks_w if tk]
             tks_w = [(re.sub(r"^[\+-]", "", tk), w) for tk, w in tks_w if tk]
-            q = ["{}^{:.4f}".format(tk, w) for tk, w in tks_w if tk]
+            syns = []
+            for tk, w in tks_w:
+                syn = self.syn.lookup(tk)
+                syn = rag_tokenizer.tokenize(" ".join(syn)).split(" ")
+                keywords.extend(syn)
+                syn = ["\"{}\"^{:.4f}".format(s, w / 4.) for s in syn]
+                syns.append(" ".join(syn))
+
+            q = ["({}^{:.4f}".format(tk, w) + " {})".format(syn) for (tk, w), syn in zip(tks_w, syns) if tk]
             for i in range(1, len(tks_w)):
                 q.append(
                     '"%s %s"^%.4f'
@@ -94,7 +103,7 @@ class FulltextQueryer:
             query = " ".join(q)
             return MatchTextExpr(
                 self.query_fields, query, 100
-            ), tks
+            ), keywords
 
         def need_fine_grained_tokenize(tk):
             if len(tk) < 3:
@@ -112,7 +121,7 @@ class FulltextQueryer:
             twts = self.tw.weights([tt])
             syns = self.syn.lookup(tt)
             if syns: keywords.extend(syns)
-            logging.info(json.dumps(twts, ensure_ascii=False))
+            logging.debug(json.dumps(twts, ensure_ascii=False))
             tms = []
             for tk, w in sorted(twts, key=lambda x: x[1] * -1):
                 sm = (

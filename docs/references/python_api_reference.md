@@ -5,7 +5,7 @@ slug: /python_api_reference
 
 # Python API Reference
 
-A complete reference for RAGFlow's Python APIs. Before proceeding, please ensure you [have your RAGFlow API key ready for authentication](../guides/develop/acquire_ragflow_api_key.md).
+A complete reference for RAGFlow's Python APIs. Before proceeding, please ensure you [have your RAGFlow API key ready for authentication](https://ragflow.io/docs/dev/acquire_ragflow_api_key).
 
 ---
 
@@ -63,7 +63,10 @@ The language setting of the dataset to create. Available options:
 
 #### permission
 
-Specifies who can access the dataset to create. You can set it only to `"me"` for now.
+Specifies who can access the dataset to create. Available options:  
+
+- `"me"`: (Default) Only you can manage the dataset.
+- `"team"`: All team members can manage the dataset.
 
 #### chunk_method, `str`
 
@@ -819,7 +822,7 @@ Retrieves chunks from specified datasets.
 
 ### Parameters
 
-#### question: `str` *Required*
+#### question: `str`, *Required*
 
 The user query or query keywords. Defaults to `""`.
 
@@ -954,7 +957,7 @@ The LLM settings for the chat assistant to create. Defaults to `None`. When the 
 
 Instructions for the LLM to follow.  A `Prompt` object contains the following attributes:
 
-- `similarity_threshold`: `float` RAGFlow uses a hybrid of weighted keyword similarity and vector cosine similarity during retrieval. This argument sets the threshold for similarities between the user query and chunks. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
+- `similarity_threshold`: `float` RAGFlow employs either a combination of weighted keyword similarity and weighted vector cosine similarity, or a combination of weighted keyword similarity and weighted reranking score during retrieval. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
 - `keywords_similarity_weight`: `float` This argument sets the weight of keyword similarity in the hybrid similarity score with vector cosine similarity or reranking model similarity. By adjusting this weight, you can control the influence of keyword similarity in relation to other similarity measures. The default value is `0.7`.
 - `top_n`: `int` This argument specifies the number of top chunks with similarity scores above the `similarity_threshold` that are fed to the LLM. The LLM will *only* access these 'top N' chunks.  The default value is `8`.
 - `variables`: `list[dict[]]` This argument lists the variables to use in the 'System' field of **Chat Configurations**. Note that:
@@ -1012,7 +1015,7 @@ A dictionary representing the attributes to update, with the following keys:
   - `"frequency penalty"`, `float` Similar to presence penalty, this reduces the model’s tendency to repeat the same words.
   - `"max_token"`, `int` The maximum length of the model’s output, measured in the number of tokens (words or pieces of words).
 - `"prompt"` : Instructions for the LLM to follow.
-  - `"similarity_threshold"`: `float` RAGFlow uses a hybrid of weighted keyword similarity and vector cosine similarity during retrieval. This argument sets the threshold for similarities between the user query and chunks. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
+  - `"similarity_threshold"`: `float` RAGFlow employs either a combination of weighted keyword similarity and weighted vector cosine similarity, or a combination of weighted keyword similarity and weighted rerank score during retrieval. This argument sets the threshold for similarities between the user query and chunks. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
   - `"keywords_similarity_weight"`: `float` This argument sets the weight of keyword similarity in the hybrid similarity score with vector cosine similarity or reranking model similarity. By adjusting this weight, you can control the influence of keyword similarity in relation to other similarity measures. The default value is `0.7`.
   - `"top_n"`: `int` This argument specifies the number of top chunks with similarity scores above the `similarity_threshold` that are fed to the LLM. The LLM will *only* access these 'top N' chunks.  The default value is `8`.
   - `"variables"`: `list[dict[]]`  This argument lists the variables to use in the 'System' field of **Chat Configurations**. Note that:
@@ -1056,7 +1059,7 @@ Deletes chat assistants by ID.
 
 #### ids: `list[str]`
 
-The IDs of the chat assistants to delete. Defaults to `None`. If it is ot specified, all chat assistants in the system will be deleted.
+The IDs of the chat assistants to delete. Defaults to `None`. If it is empty or not specified, all chat assistants in the system will be deleted.
 
 ### Returns
 
@@ -1141,13 +1144,13 @@ Chat Session APIs
 
 ---
 
-## Create session
+## Create session with chat assistant
 
 ```python
 Chat.create_session(name: str = "New session") -> Session
 ```
 
-Creates a chat session.
+Creates a session with the current chat assistant.
 
 ### Parameters
 
@@ -1177,13 +1180,13 @@ session = assistant.create_session()
 
 ---
 
-## Update session
+## Update chat assistant's session
 
 ```python
 Session.update(update_message: dict)
 ```
 
-Updates the current session.
+Updates the current session of the current chat assistant.
 
 ### Parameters
 
@@ -1212,7 +1215,7 @@ session.update({"name": "updated_name"})
 
 ---
 
-## List sessions
+## List chat assistant's sessions
 
 ```python
 Chat.list_sessions(
@@ -1275,13 +1278,13 @@ for session in assistant.list_sessions():
 
 ---
 
-## Delete sessions
+## Delete chat assistant's sessions
 
 ```python
 Chat.delete_sessions(ids:list[str] = None)
 ```
 
-Deletes sessions by ID.
+Deletes sessions of the current chat assistant by ID.
 
 ### Parameters
 
@@ -1307,17 +1310,21 @@ assistant.delete_sessions(ids=["id_1","id_2"])
 
 ---
 
-## Converse
+## Converse with chat assistant
 
 ```python
 Session.ask(question: str, stream: bool = False) -> Optional[Message, iter[Message]]
 ```
 
-Asks a question to start an AI-powered conversation.
+Asks a specified chat assistant a question to start an AI-powered conversation.
+
+:::tip NOTE
+In streaming mode, not all responses include a reference, as this depends on the system's judgement.
+:::
 
 ### Parameters
 
-#### question: `str` *Required*
+#### question: `str`, *Required*
 
 The question to start an AI-powered conversation.
 
@@ -1325,8 +1332,8 @@ The question to start an AI-powered conversation.
 
 Indicates whether to output responses in a streaming way:
 
-- `True`: Enable streaming.
-- `False`: Disable streaming (default).
+- `True`: Enable streaming (default).
+- `False`: Disable streaming.
 
 ### Returns
 
@@ -1379,7 +1386,7 @@ assistant = assistant[0]
 session = assistant.create_session()    
 
 print("\n==================== Miss R =====================\n")
-print(assistant.get_prologue())
+print("Hello. What can I do for you?")
 
 while True:
     question = input("\n==================== User =====================\n> ")
@@ -1390,22 +1397,23 @@ while True:
         print(ans.content[len(cont):], end='', flush=True)
         cont = ans.content
 ```
+
 ---
 
-## Create agent session
+## Create session with agent
 
 ```python
 Agent.create_session(id,rag) -> Session
 ```
 
-Creates a agemt session.
+Creates a  session with the current agent.
 
 ### Returns
 
 - Success: A `Session` object containing the following attributes:
   - `id`: `str` The auto-generated unique identifier of the created session.
   - `message`: `list[Message]` The messages of the created session assistant. Default: `[{"role": "assistant", "content": "Hi! I am your assistant，can I help you?"}]`
-  - `agnet_id`: `str` The ID of the associated agent assistant.
+  - `agent_id`: `str` The ID of the associated agent assistant.
 - Failure: `Exception`
 
 ### Examples
@@ -1417,19 +1425,24 @@ rag_object = RAGFlow(api_key="<YOUR_API_KEY>", base_url="http://<YOUR_BASE_URL>:
 AGENT_ID = "AGENT_ID"
 session = create_session(AGENT_ID,rag_object)
 ```
+
 ---
 
-## Converse through agent
+## Converse with agent
 
 ```python
 Session.ask(question: str, stream: bool = False) -> Optional[Message, iter[Message]]
 ```
 
-Asks a question to start an AI-powered conversation.
+Asks a specified agent a question to start an AI-powered conversation.
+
+:::tip NOTE
+In streaming mode, not all responses include a reference, as this depends on the system's judgement.
+:::
 
 ### Parameters
 
-#### question: `str` *Required*
+#### question: `str`, *Required*
 
 The question to start an AI-powered conversation.
 
@@ -1437,8 +1450,8 @@ The question to start an AI-powered conversation.
 
 Indicates whether to output responses in a streaming way:
 
-- `True`: Enable streaming.
-- `False`: Disable streaming (default).
+- `True`: Enable streaming (default).
+- `False`: Disable streaming.
 
 ### Returns
 
@@ -1489,12 +1502,12 @@ rag_object = RAGFlow(api_key="<YOUR_API_KEY>", base_url="http://<YOUR_BASE_URL>:
 AGENT_id = "AGENT_ID"
 session = Agent.create_session(AGENT_id,rag_object)    
 
-print("\n==================== Miss R =====================\n")
+print("\n===== Miss R ====\n")
 print("Hello. What can I do for you?")
 
 while True:
-    question = input("\n==================== User =====================\n> ")
-    print("\n==================== Miss R =====================\n")
+    question = input("\n===== User ====\n> ")
+    print("\n==== Miss R ====\n")
     
     cont = ""
     for ans in session.ask(question, stream=True):

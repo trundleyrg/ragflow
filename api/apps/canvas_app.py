@@ -13,7 +13,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import logging
 import json
+import traceback
 from functools import partial
 from flask import request, Response
 from flask_login import login_required, current_user
@@ -108,25 +110,21 @@ def run():
         canvas = Canvas(cvs.dsl, current_user.id)
         if "message" in req:
             canvas.messages.append({"role": "user", "content": req["message"], "id": message_id})
-            if len([m for m in canvas.messages if m["role"] == "user"]) > 1:
-                #ten = TenantService.get_info_by(current_user.id)[0]
-                #req["message"] = full_question(ten["tenant_id"], ten["llm_id"], canvas.messages)
-                pass
             canvas.add_user_input(req["message"])
-        answer = canvas.run(stream=stream)
-        print(canvas)
     except Exception as e:
         return server_error_response(e)
 
-    assert answer is not None, "Nothing. Is it over?"
-
     if stream:
-        assert isinstance(answer, partial), "Nothing. Is it over?"
-
         def sse():
             nonlocal answer, cvs
             try:
-                for ans in answer():
+                for ans in canvas.run(stream=True):
+                    if ans.get("running_status"):
+                        yield "data:" + json.dumps({"code": 0, "message": "",
+                                                    "data": {"answer": ans["content"],
+                                                             "running_status": True}},
+                                                   ensure_ascii=False) + "\n\n"
+                        continue
                     for k in ans.keys():
                         final_ans[k] = ans[k]
                     ans = {"answer": ans["content"], "reference": ans.get("reference", [])}
@@ -139,6 +137,9 @@ def run():
                 cvs.dsl = json.loads(str(canvas))
                 UserCanvasService.update_by_id(req["id"], cvs.to_dict())
             except Exception as e:
+                cvs.dsl = json.loads(str(canvas))
+                UserCanvasService.update_by_id(req["id"], cvs.to_dict())
+                traceback.print_exc()
                 yield "data:" + json.dumps({"code": 500, "message": str(e),
                                             "data": {"answer": "**ERROR**: " + str(e), "reference": []}},
                                            ensure_ascii=False) + "\n\n"
@@ -151,13 +152,15 @@ def run():
         resp.headers.add_header("Content-Type", "text/event-stream; charset=utf-8")
         return resp
 
-    final_ans["content"] = "\n".join(answer["content"]) if "content" in answer else ""
-    canvas.messages.append({"role": "assistant", "content": final_ans["content"], "id": message_id})
-    if final_ans.get("reference"):
-        canvas.reference.append(final_ans["reference"])
-    cvs.dsl = json.loads(str(canvas))
-    UserCanvasService.update_by_id(req["id"], cvs.to_dict())
-    return get_json_result(data={"answer": final_ans["content"], "reference": final_ans.get("reference", [])})
+    for answer in canvas.run(stream=False):
+        if answer.get("running_status"): continue
+        final_ans["content"] = "\n".join(answer["content"]) if "content" in answer else ""
+        canvas.messages.append({"role": "assistant", "content": final_ans["content"], "id": message_id})
+        if final_ans.get("reference"):
+            canvas.reference.append(final_ans["reference"])
+        cvs.dsl = json.loads(str(canvas))
+        UserCanvasService.update_by_id(req["id"], cvs.to_dict())
+        return get_json_result(data={"answer": final_ans["content"], "reference": final_ans.get("reference", [])})
 
 
 @manager.route('/reset', methods=['POST'])

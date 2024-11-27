@@ -231,6 +231,8 @@ export default {
       maxTokensMessage: 'El máximo de tokens es obligatorio',
       maxTokensTip:
         'Esto establece la longitud máxima de la salida del modelo, medida en el número de tokens (palabras o piezas de palabras).',
+      maxTokensInvalidMessage: 'Por favor, ingresa un número válido para Max Tokens.',
+      maxTokensMinMessage: 'Max Tokens no puede ser menor que 0.',
       quote: 'Mostrar cita',
       quoteTip: '¿Debe mostrarse la fuente del texto original?',
       selfRag: 'Self-RAG',
@@ -278,6 +280,12 @@ export default {
     setting: {
       profile: 'Perfil',
       profileDescription: 'Actualiza tu foto y tus datos personales aquí.',
+      maxTokens: 'Máximo de tokens',
+      maxTokensMessage: 'El máximo de tokens es obligatorio',
+      maxTokensTip:
+        'Esto establece la longitud máxima de la salida del modelo, medida en el número de tokens (palabras o piezas de palabras).',
+      maxTokensInvalidMessage: 'Por favor, ingresa un número válido para Max Tokens.',
+      maxTokensMinMessage: 'Max Tokens no puede ser menor que 0.',
       password: 'Contraseña',
       passwordDescription:
         'Por favor ingresa tu contraseña actual para cambiarla.',
@@ -582,7 +590,7 @@ export default {
       bingTip:
         'Este componente se usa para obtener resultados de búsqueda de https://www.bing.com/. Típicamente, actúa como un complemento a las bases de conocimiento. Top N y la clave de suscripción de Bing especifican el número de resultados de búsqueda que necesitas ajustar.',
       apiKey: 'Clave API',
-      country: 'País',
+      country: 'País&Región',
       language: 'Idioma',
       googleScholar: 'Google Scholar',
       googleScholarDescription:

@@ -20,7 +20,7 @@
         <img alt="Static Badge" src="https://img.shields.io/badge/Online-Demo-4e6b99">
     </a>
     <a href="https://hub.docker.com/r/infiniflow/ragflow" target="_blank">
-        <img src="https://img.shields.io/badge/docker_pull-ragflow:v0.13.0-brightgreen" alt="docker pull infiniflow/ragflow:v0.13.0">
+        <img src="https://img.shields.io/badge/docker_pull-ragflow:v0.14.0-brightgreen" alt="docker pull infiniflow/ragflow:v0.14.0">
     </a>
     <a href="https://github.com/infiniflow/ragflow/releases/latest">
         <img src="https://img.shields.io/github/v/release/infiniflow/ragflow?color=blue&label=Latest%20Release" alt="Latest Release">
@@ -56,11 +56,11 @@
 
 ## 🔥 업데이트
 
+- 2024-11-22 에이전트의 변수 정의 및 사용을 개선했습니다.
+  
 - 2024-11-01 파싱된 청크에 키워드 추출 및 관련 질문 생성을 추가하여 재현율을 향상시킵니다.
   
 - 2024-09-13 지식베이스 Q&A 검색 모드를 추가합니다.
-  
-- 2024-09-09 Agent에 의료상담 템플릿을 추가하였습니다.
   
 - 2024-08-22 RAG를 통해 SQL 문에 텍스트를 지원합니다.
   
@@ -152,9 +152,9 @@
    $ docker compose -f docker-compose.yml up -d
    ```
    
-   > - 특정 버전의 RAGFlow slim Docker 이미지를 다운로드하려면, **docker/.env**에서 `RAGFlow_IMAGE` 변수를 원하는 버전으로 업데이트하세요. 예를 들어, `RAGFLOW_IMAGE=infiniflow/ragflow:v0.13.0-slim`으로 설정합니다. 이 변경을 완료한 후, 위의 명령을 다시 실행하여 다운로드를 시작하세요.
+   > - 특정 버전의 RAGFlow slim Docker 이미지를 다운로드하려면, **docker/.env**에서 `RAGFlow_IMAGE` 변수를 원하는 버전으로 업데이트하세요. 예를 들어, `RAGFLOW_IMAGE=infiniflow/ragflow:v0.14.0-slim`으로 설정합니다. 이 변경을 완료한 후, 위의 명령을 다시 실행하여 다운로드를 시작하세요.
    > - RAGFlow의 임베딩 모델과 Python 라이브러리를 포함한 개발 버전 Docker 이미지를 다운로드하려면, **docker/.env**에서 `RAGFlow_IMAGE` 변수를 `RAGFLOW_IMAGE=infiniflow/ragflow:dev`로 업데이트하세요. 이 변경을 완료한 후, 위의 명령을 다시 실행하여 다운로드를 시작하세요.
-   > - 특정 버전의 RAGFlow Docker 이미지를 임베딩 모델과 Python 라이브러리를 포함하여 다운로드하려면, **docker/.env**에서 `RAGFlow_IMAGE` 변수를 원하는 버전으로 업데이트하세요. 예를 들어, `RAGFLOW_IMAGE=infiniflow/ragflow:v0.13.0` 로 설정합니다. 이 변경을 완료한 후, 위의 명령을 다시 실행하여 다운로드를 시작하세요.  
+   > - 특정 버전의 RAGFlow Docker 이미지를 임베딩 모델과 Python 라이브러리를 포함하여 다운로드하려면, **docker/.env**에서 `RAGFlow_IMAGE` 변수를 원하는 버전으로 업데이트하세요. 예를 들어, `RAGFLOW_IMAGE=infiniflow/ragflow:v0.14.0` 로 설정합니다. 이 변경을 완료한 후, 위의 명령을 다시 실행하여 다운로드를 시작하세요.  
    
    > **NOTE:** 임베딩 모델과 Python 라이브러리를 포함한 RAGFlow Docker 이미지의 크기는 약 9GB이며, 로드하는 데 상당히 오랜 시간이 걸릴 수 있습니다.
 
@@ -179,7 +179,7 @@
     * Running on http://x.x.x.x:9380
     INFO:werkzeug:Press CTRL+C to quit
    ```
-   > 만약 확인 단계를 건너뛰고 바로 RAGFlow에 로그인하면, RAGFlow가 완전히 초기화되지 않았기 때문에 브라우저에서 `network abnormal` 오류가 발생할 수 있습니다.
+   > 만약 확인 단계를 건너뛰고 바로 RAGFlow에 로그인하면, RAGFlow가 완전히 초기화되지 않았기 때문에 브라우저에서 `network anormal` 오류가 발생할 수 있습니다.
 
 5. 웹 브라우저에 서버의 IP 주소를 입력하고 RAGFlow에 로그인하세요.
    > 기본 설정을 사용할 경우, `http://IP_OF_YOUR_MACHINE`만 입력하면 됩니다 (포트 번호는 제외). 기본 HTTP 서비스 포트 `80`은 기본 구성으로 사용할 때 생략할 수 있습니다.
@@ -208,6 +208,21 @@
 > $ docker compose -f docker/docker-compose.yml up -d
 > ```
 
+### Elasticsearch 에서 Infinity 로 문서 엔진 전환
+
+RAGFlow 는 기본적으로 Elasticsearch 를 사용하여 전체 텍스트 및 벡터를 저장합니다. [Infinity]로 전환(https://github.com/infiniflow/infinity/), 다음 절차를 따르십시오.
+1. 실행 중인 모든 컨테이너를 중지합니다.
+   ```bash
+   $docker compose-f docker/docker-compose.yml down-v
+   ```
+2. **docker/.env**의 "DOC_ENGINE" 을 "infinity" 로 설정합니다.
+3. 컨테이너 부팅:
+   ```bash
+   $docker compose-f docker/docker-compose.yml up-d
+   ``` 
+> [!WARNING]
+> Linux/arm64 시스템에서 Infinity로 전환하는 것은 공식적으로 지원되지 않습니다.
+ 
 ## 🔧 소스 코드로 Docker 이미지를 컴파일합니다(임베딩 모델 포함하지 않음)
 
 이 Docker 이미지의 크기는 약 1GB이며, 외부 대형 모델과 임베딩 서비스에 의존합니다.

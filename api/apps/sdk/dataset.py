@@ -23,7 +23,7 @@ from api.db.services.file_service import FileService
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.db.services.llm_service import TenantLLMService, LLMService
 from api.db.services.user_service import TenantService
-from api.settings import RetCode
+from api import settings
 from api.utils import get_uuid
 from api.utils.api_utils import (
     get_result,
@@ -253,9 +253,11 @@ def delete(tenant_id):
                 ]
             )
             File2DocumentService.delete_by_document_id(doc.id)
+        FileService.filter_delete(
+            [File.source_type == FileSource.KNOWLEDGEBASE, File.type == "folder", File.name == kbs[0].name])
         if not KnowledgebaseService.delete_by_id(id):
             return get_error_data_result(message="Delete dataset error.(Database error)")
-    return get_result(code=RetCode.SUCCESS)
+    return get_result(code=settings.RetCode.SUCCESS)
 
 
 @manager.route("/datasets/<dataset_id>", methods=["PUT"])
@@ -424,7 +426,7 @@ def update(tenant_id, dataset_id):
             )
     if not KnowledgebaseService.update_by_id(kb.id, req):
         return get_error_data_result(message="Update dataset error.(Database error)")
-    return get_result(code=RetCode.SUCCESS)
+    return get_result(code=settings.RetCode.SUCCESS)
 
 
 @manager.route("/datasets", methods=["GET"])
@@ -487,12 +489,14 @@ def list(tenant_id):
     """
     id = request.args.get("id")
     name = request.args.get("name")
-    kbs = KnowledgebaseService.query(id=id, name=name, status=1)
-    if not kbs:
-        return get_error_data_result(message="The dataset doesn't exist")
-    for kb in kbs:
-        if not KnowledgebaseService.accessible(kb_id=kb.id,user_id=tenant_id):
-            return get_error_data_result(message=f"You don't own the dataset {kb.id}")
+    if id:
+        kbs = KnowledgebaseService.get_kb_by_id(id,tenant_id)
+        if not kbs:
+            return get_error_data_result(f"You don't own the dataset {id}")
+    if name:
+        kbs = KnowledgebaseService.get_kb_by_name(name,tenant_id)
+        if not kbs:
+            return get_error_data_result(f"You don't own the dataset {name}")
     page_number = int(request.args.get("page", 1))
     items_per_page = int(request.args.get("page_size", 30))
     orderby = request.args.get("orderby", "create_time")

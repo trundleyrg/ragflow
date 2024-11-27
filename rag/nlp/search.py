@@ -14,12 +14,11 @@
 #  limitations under the License.
 #
 
+import logging
 import re
 import json
-from typing import List, Optional, Dict, Union
 from dataclasses import dataclass
 
-from rag.settings import doc_store_logger
 from rag.utils import rmSpace
 from rag.nlp import rag_tokenizer, query
 import numpy as np
@@ -37,13 +36,13 @@ class Dealer:
     @dataclass
     class SearchResult:
         total: int
-        ids: List[str]
-        query_vector: List[float] = None
-        field: Optional[Dict] = None
-        highlight: Optional[Dict] = None
-        aggregation: Union[List, Dict, None] = None
-        keywords: Optional[List[str]] = None
-        group_docs: List[List] = None
+        ids: list[str]
+        query_vector: list[float] | None = None
+        field: dict | None = None
+        highlight: dict | None = None
+        aggregation: list | dict | None = None
+        keywords: list[str] | None = None
+        group_docs: list[list] | None = None
 
     def get_vector(self, txt, emb_mdl, topk=10, similarity=0.1):
         qv, _ = emb_mdl.encode_queries(txt)
@@ -57,12 +56,12 @@ class Dealer:
             if key in req and req[key] is not None:
                 condition[field] = req[key]
         # TODO(yzc): `available_int` is nullable however infinity doesn't support nullable columns.
-        for key in ["knowledge_graph_kwd"]:
+        for key in ["knowledge_graph_kwd", "available_int"]:
             if key in req and req[key] is not None:
                 condition[key] = req[key]
         return condition
 
-    def search(self, req, idx_names: list[str], kb_ids: list[str], emb_mdl=None, highlight=False):
+    def search(self, req, idx_names: str | list[str], kb_ids: list[str], emb_mdl=None, highlight = False):
         filters = self.get_filters(req)
         orderBy = OrderByExpr()
 
@@ -82,8 +81,8 @@ class Dealer:
             if req.get("sort"):
                 orderBy.desc("create_timestamp_flt")
             res = self.dataStore.search(src, [], filters, [], orderBy, offset, limit, idx_names, kb_ids)
-            total = self.dataStore.getTotal(res)
-            doc_store_logger.info("Dealer.search TOTAL: {}".format(total))
+            total=self.dataStore.getTotal(res)
+            logging.debug("Dealer.search TOTAL: {}".format(total))
         else:
             highlightFields = ["content_ltks", "title_tks"] if highlight else []
             matchText, keywords = self.qryr.question(qst, min_match=0.3)  # todo：分词可补充专有名词，提高检索效果
@@ -92,7 +91,7 @@ class Dealer:
                 res = self.dataStore.search(src, highlightFields, filters, matchExprs, orderBy, offset, limit,
                                             idx_names, kb_ids)
                 total = self.dataStore.getTotal(res)
-                doc_store_logger.info("Dealer.search TOTAL: {}".format(total))
+                logging.debug("Dealer.search TOTAL: {}".format(total))
             else:
                 matchDense = self.get_vector(qst, emb_mdl, topk, req.get("similarity", 0.1))
                 q_vec = matchDense.embedding_data
@@ -104,18 +103,17 @@ class Dealer:
                 res = self.dataStore.search(src, highlightFields, filters, matchExprs, orderBy, offset, limit,
                                             idx_names, kb_ids)
                 total = self.dataStore.getTotal(res)
-                doc_store_logger.info("Dealer.search TOTAL: {}".format(total))
+                logging.debug("Dealer.search TOTAL: {}".format(total))
 
                 # If result is empty, try again with lower min_match
                 if total == 0:
                     matchText, _ = self.qryr.question(qst, min_match=0.1)
-                    if "doc_ids" in filters:
-                        del filters["doc_ids"]
+                    filters.pop("doc_ids", None)
                     matchDense.extra_options["similarity"] = 0.17
                     res = self.dataStore.search(src, highlightFields, filters, [matchText, matchDense, fusionExpr],
                                                 orderBy, offset, limit, idx_names, kb_ids)
                     total = self.dataStore.getTotal(res)
-                    doc_store_logger.info("Dealer.search 2 TOTAL: {}".format(total))
+                    logging.debug("Dealer.search 2 TOTAL: {}".format(total))
 
             for k in keywords:
                 kwds.add(k)
@@ -126,7 +124,7 @@ class Dealer:
                         continue
                     kwds.add(kk)
 
-        doc_store_logger.info(f"TOTAL: {total}")
+        logging.debug(f"TOTAL: {total}")
         ids = self.dataStore.getChunkIds(res)
         keywords = list(kwds)
         highlight = self.dataStore.getHighlight(res, keywords, "content_with_weight")
@@ -183,7 +181,7 @@ class Dealer:
                 continue
             idx.append(i)
             pieces_.append(t)
-        doc_store_logger.info("{} => {}".format(answer, pieces_))
+        logging.debug("{} => {}".format(answer, pieces_))
         if not pieces_:
             return answer, set([])
 
@@ -204,7 +202,7 @@ class Dealer:
                                                                 chunks_tks,
                                                                 tkweight, vtweight)
                 mx = np.max(sim) * 0.99
-                doc_store_logger.info("{} SIM: {}".format(pieces_[i], mx))
+                logging.debug("{} SIM: {}".format(pieces_[i], mx))
                 if mx < thr:
                     continue
                 cites[idx[i]] = list(
@@ -311,8 +309,7 @@ class Dealer:
         if page <= RERANK_PAGE_LIMIT:
             if rerank_mdl:
                 sim, tsim, vsim = self.rerank_by_model(rerank_mdl,
-                                                       sres, question, 1 - vector_similarity_weight,
-                                                       vector_similarity_weight)
+                    sres, question, 1 - vector_similarity_weight, vector_similarity_weight)
             else:
                 sim, tsim, vsim = self.rerank(
                     sres, question, 1 - vector_similarity_weight, vector_similarity_weight)
