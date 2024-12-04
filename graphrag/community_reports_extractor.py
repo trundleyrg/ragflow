@@ -72,7 +72,7 @@ class CommunityReportsExtractor:
                     "relation_df": rela_df.to_csv(index_label="id")
                 }
                 text = perform_variable_replacements(self._extraction_prompt, variables=prompt_variables)
-                gen_conf = {"temperature": 0.3}
+                gen_conf = {"temperature": 0.3, "num_ctx": 32768}  # ollama截短限制
                 try:
                     response = self._llm.chat(text, [{"role": "user", "content": "Output:"}], gen_conf)
                     token_count += num_tokens_from_string(text + response)

@@ -96,7 +96,7 @@ class EntityResolution:
         for k, v in node_clusters.items():
             candidate_resolution[k] = [(a, b) for a, b in itertools.combinations(v, 2) if self.is_similarity(a, b)]
 
-        gen_conf = {"temperature": 0.5}
+        gen_conf = {"temperature": 0.3, "num_ctx": 32768}  # ollama截短限制
         resolution_result = set()
         for candidate_resolution_i in candidate_resolution.items():
             if candidate_resolution_i[1]:

@@ -357,6 +357,7 @@ class OllamaChat(Base):
             if "temperature" in gen_conf: options["temperature"] = gen_conf["temperature"]
             if "max_tokens" in gen_conf: options["num_predict"] = gen_conf["max_tokens"]
             if "top_p" in gen_conf: options["top_k"] = gen_conf["top_p"]
+            if "num_ctx" in gen_conf: options["num_ctx"] = gen_conf["num_ctx"]
             if "presence_penalty" in gen_conf: options["presence_penalty"] = gen_conf["presence_penalty"]
             if "frequency_penalty" in gen_conf: options["frequency_penalty"] = gen_conf["frequency_penalty"]
             response = self.client.chat(
