@@ -13,6 +13,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
 from .embedding_model import *
 from .chat_model import *
 from .cv_model import *
