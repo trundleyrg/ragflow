@@ -10,13 +10,16 @@ services:
     container_name: ragflow-server
     ports:
       - ${SVR_HTTP_PORT}:9380
-      - 80:80
+      - 8590:8590
       - 443:443
     volumes:
       - ./ragflow-logs:/ragflow/logs
       - ./nginx/ragflow.conf:/etc/nginx/conf.d/ragflow.conf
       - ./nginx/proxy.conf:/etc/nginx/proxy.conf
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ../rag/nlp:/ragflow/rag/nlp  # 相对目录开始
+      - ../api:/ragflow/api
+      - ../graphrag:/ragflow/graphrag
     env_file: .env
     environment:
       - TZ=${TIMEZONE}
@@ -25,7 +28,5 @@ services:
     networks:
       - ragflow
     restart: on-failure
-    # https://docs.docker.com/engine/daemon/prometheus/#create-a-prometheus-configuration
-    # If you're using Docker Desktop, the --add-host flag is optional. This flag makes sure that the host's internal IP gets exposed to the Prometheus container. 
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -1,11 +1,11 @@
 ragflow:
   host: 0.0.0.0
-  http_port: 8599
+  http_port: 8590
 mysql:
   name: 'rag_flow'
   user: 'root'
   password: 'infini_rag_flow'
-#  host: 'mysql'
+#  host: '10.0.1.41'
   host: 'localhost'
   port: 5455
   max_connections: 100

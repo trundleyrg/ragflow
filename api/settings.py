@@ -54,9 +54,9 @@ GITHUB_OAUTH = None
 FEISHU_OAUTH = None
 
 DOC_ENGINE = None
-docStoreConn = None
+docStoreConn = rag.utils.es_conn.ESConnection()
 
-retrievaler = None
+retrievaler = search.Dealer(docStoreConn)
 kg_retrievaler = None
 
 
